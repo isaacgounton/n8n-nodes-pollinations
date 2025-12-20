@@ -1,9 +1,9 @@
 {
 	"name": "n8n-nodes-ai-media-generate",
-	"version": "0.1.34",
+	"version": "0.1.35",
 	"description": "n8n community node for AI media generation - Generate images and videos using various AI platforms",
 	"license": "MIT",
-	"homepage": "https://github.com/n8n-io/n8n-nodes-ai-media-generate",
+	"homepage": "https://github.com/MaskerPRC/n8n-nodes-ai-media-generate",
 	"keywords": [
 		"n8n-community-node-package",
 		"n8n",
@@ -21,7 +21,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/n8n-io/n8n-nodes-ai-media-generate.git"
+		"url": "git+https://github.com/MaskerPRC/n8n-nodes-ai-media-generate.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",
