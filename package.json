@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-ai-media-generate",
-	"version": "0.1.36",
+	"version": "0.1.40",
 	"description": "n8n community node for AI media generation - Generate images and videos using various AI platforms",
 	"license": "MIT",
 	"homepage": "https://github.com/MaskerPRC/n8n-nodes-ai-media-generate",

@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.40] - 2025-01-XX
+
+### Fixed
+- Fixed FAL API status check endpoint for seedream (bytedance) models - Now correctly uses `/fal-ai/bytedance/requests/{requestId}/status` instead of the full endpoint path
+
+## [0.1.39] - 2025-01-XX
+
+### Fixed
+- Fixed FAL API status check endpoint for nano-banana-pro (Gemini 3 Pro Image) models - Now correctly uses `/fal-ai/nano-banana-pro/requests/{requestId}/status` instead of the full endpoint path
+
+## [0.1.38] - 2025-01-XX
+
+### Fixed
+- Fixed FAL API status check endpoint for z-image models - Now correctly uses `/fal-ai/z-image/requests/{requestId}/status` instead of the full endpoint path
+
+## [0.1.37] - 2025-01-XX
+
+### Fixed
+- Fixed FAL API status check endpoint for kling-video models - Now correctly uses `/fal-ai/kling-video/requests/{requestId}/status` instead of the full endpoint path
+- Fixed FAL API status check endpoint for WAN 2.6 models - Now correctly uses `/wan/v2.6/requests/{requestId}/status` instead of the full endpoint path
+- Added fallback handling for 405 errors when status endpoint doesn't support GET method - Will try to fetch result directly instead
+
 ## [0.1.36] - 2025-01-XX
 
 ### Added

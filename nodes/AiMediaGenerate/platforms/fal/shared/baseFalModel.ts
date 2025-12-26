@@ -2,9 +2,10 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestOptions,
 	IDataObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { BaseModel, type ModelConfig } from '../../../shared/baseModel';
+import { BaseModel, type ModelConfig, type AsyncResultResponse } from '../../../shared/baseModel';
 
 export abstract class BaseFalModel extends BaseModel {
 	protected apiKey: string | null = null;
@@ -14,6 +15,57 @@ export abstract class BaseFalModel extends BaseModel {
 	constructor(executeFunctions: IExecuteFunctions, itemIndex: number) {
 		super(executeFunctions, itemIndex, 'fal');
 		// 不在构造函数中获取 credentials，延迟到第一次使用时获取
+	}
+
+	/**
+	 * 获取状态查询的基础路径
+	 * 对于某些模型，需要从 endpoint 中提取基础路径
+	 * - kling-video: /fal-ai/kling-video/o1/standard/image-to-video -> /fal-ai/kling-video
+	 * - wan: /wan/v2.6/text-to-video -> /wan/v2.6
+	 * - z-image: /fal-ai/z-image/turbo -> /fal-ai/z-image
+	 * - nano-banana-pro: /fal-ai/nano-banana-pro/edit -> /fal-ai/nano-banana-pro
+	 * - seedream: /fal-ai/bytedance/seedream/v4.5/text-to-image -> /fal-ai/bytedance
+	 */
+	protected getStatusBasePath(endpoint: string): string {
+		// 检查是否是 kling-video 相关模型
+		if (endpoint.includes('/kling-video/')) {
+			// 提取基础路径：/fal-ai/kling-video
+			const match = endpoint.match(/^(\/fal-ai\/kling-video)/);
+			if (match) {
+				return match[1];
+			}
+		}
+		// 检查是否是 WAN 相关模型
+		if (endpoint.startsWith('/wan/v2.6/')) {
+			// 提取基础路径：/wan/v2.6
+			return '/wan/v2.6';
+		}
+		// 检查是否是 z-image 相关模型
+		if (endpoint.includes('/z-image/')) {
+			// 提取基础路径：/fal-ai/z-image
+			const match = endpoint.match(/^(\/fal-ai\/z-image)/);
+			if (match) {
+				return match[1];
+			}
+		}
+		// 检查是否是 nano-banana-pro 相关模型
+		if (endpoint.includes('/nano-banana-pro/')) {
+			// 提取基础路径：/fal-ai/nano-banana-pro
+			const match = endpoint.match(/^(\/fal-ai\/nano-banana-pro)/);
+			if (match) {
+				return match[1];
+			}
+		}
+		// 检查是否是 seedream (bytedance) 相关模型
+		if (endpoint.includes('/bytedance/')) {
+			// 提取基础路径：/fal-ai/bytedance
+			const match = endpoint.match(/^(\/fal-ai\/bytedance)/);
+			if (match) {
+				return match[1];
+			}
+		}
+		// 对于其他模型，使用完整的 endpoint
+		return endpoint;
 	}
 
 	protected async ensureApiKey(): Promise<void> {
@@ -122,6 +174,151 @@ export abstract class BaseFalModel extends BaseModel {
 	abstract buildRequestParams(): Promise<IDataObject>;
 	protected abstract processSyncResponse(response: IDataObject): IDataObject;
 	protected abstract processAsyncResponse(response: IDataObject): IDataObject;
+
+	/**
+	 * 重写 executeAsync 方法以正确处理 FAL API 的状态查询端点
+	 * 特别是对于 kling-video 相关模型，状态查询端点格式不同
+	 */
+	async executeAsync(): Promise<INodeExecutionData> {
+		const config = this.getConfig();
+		if (!config.supportsAsync) {
+			throw new NodeOperationError(
+				this.executeFunctions.getNode(),
+				`Model ${config.displayName} does not support asynchronous requests`,
+				{ itemIndex: this.itemIndex },
+			);
+		}
+
+		// 确保 credentials 已加载
+		await this.ensureApiKey();
+
+		// 提交异步请求
+		const params = await this.buildRequestParams();
+		const asyncUrl = `${this.getAsyncBaseUrl()}${config.endpoint}`;
+		const submitResponse = await this.makeRequest('POST', asyncUrl, params);
+
+		const requestId = submitResponse.request_id as string;
+		if (!requestId) {
+			throw new NodeOperationError(
+				this.executeFunctions.getNode(),
+				'Failed to get request_id from async submission',
+				{ itemIndex: this.itemIndex },
+			);
+		}
+
+		// 获取状态查询的基础路径
+		const statusBasePath = this.getStatusBasePath(config.endpoint);
+
+		// 轮询状态
+		const pollInterval = 2000; // 每2秒轮询一次
+
+		while (true) {
+			// FAL API 的状态检查端点格式：/statusBasePath/requests/{requestId}/status
+			// 对于 kling-video：/fal-ai/kling-video/requests/{requestId}/status
+			// 对于其他模型：/endpoint/requests/{requestId}/status
+			const statusUrl = `${this.getAsyncBaseUrl()}${statusBasePath}/requests/${requestId}/status`;
+			
+			let statusResponse: IDataObject;
+			try {
+				statusResponse = await this.makeRequest('GET', statusUrl);
+			} catch (error: unknown) {
+				// 如果状态查询失败（如 405），尝试直接查询结果端点
+				const err = error as { response?: { statusCode?: number } };
+				if (err.response?.statusCode === 405) {
+					// 405 表示方法不允许，可能状态端点不支持 GET，尝试直接获取结果
+					try {
+						const resultUrl = `${this.getAsyncBaseUrl()}${statusBasePath}/requests/${requestId}`;
+						const resultResponse = await this.makeRequest('GET', resultUrl);
+						// 如果能够获取结果，说明任务已完成
+						if (resultResponse.video || resultResponse.images || (resultResponse as IDataObject).output) {
+							return {
+								json: this.processAsyncResponse(resultResponse as AsyncResultResponse),
+								pairedItem: { item: this.itemIndex },
+							};
+						}
+						// 如果结果中还没有数据，继续等待
+					} catch (resultError: unknown) {
+						// 如果获取结果也失败，继续轮询
+						const resultErr = resultError as { response?: { statusCode?: number } };
+						if (resultErr.response?.statusCode === 404 || resultErr.response?.statusCode === 422) {
+							// 404 或 422 表示任务可能还在进行中，继续等待
+							const delay = (ms: number) => {
+								const start = Date.now();
+								while (Date.now() - start < ms) {
+									// Busy wait - acceptable for short polling intervals
+								}
+							};
+							delay(pollInterval);
+							continue;
+						}
+						// 其他错误，抛出
+						throw resultError;
+					}
+					// 继续等待
+					const delay = (ms: number) => {
+						const start = Date.now();
+						while (Date.now() - start < ms) {
+							// Busy wait - acceptable for short polling intervals
+						}
+					};
+					delay(pollInterval);
+					continue;
+				}
+				throw error;
+			}
+
+			if (statusResponse.status === 'COMPLETED') {
+				// FAL API 的结果获取端点格式：/statusBasePath/requests/{requestId}
+				// 先检查状态响应中是否已包含结果数据（如 images 或 video 字段）
+				let resultResponse: IDataObject;
+				
+				// 检查状态响应中是否已包含结果数据
+				if (statusResponse.images || statusResponse.video || (statusResponse as IDataObject).output) {
+					// 状态响应中已包含结果数据，直接使用
+					resultResponse = statusResponse as IDataObject;
+				} else {
+					// 需要单独获取结果
+					try {
+						const resultUrl = `${this.getAsyncBaseUrl()}${statusBasePath}/requests/${requestId}`;
+						resultResponse = await this.makeRequest('GET', resultUrl);
+					} catch (error: unknown) {
+						// 如果获取结果失败（422/404），尝试使用状态响应
+						const err = error as { response?: { statusCode?: number; body?: IDataObject } };
+						if (err.response?.statusCode === 422 || err.response?.statusCode === 404) {
+							// 422 或 404 可能表示结果已经在状态响应中，或者端点格式不对
+							// 尝试使用状态响应作为结果
+							resultResponse = statusResponse as IDataObject;
+						} else {
+							throw error;
+						}
+					}
+				}
+
+				return {
+					json: this.processAsyncResponse(resultResponse as AsyncResultResponse),
+					pairedItem: { item: this.itemIndex },
+				};
+			}
+
+			if (statusResponse.status === 'FAILED') {
+				throw new NodeOperationError(
+					this.executeFunctions.getNode(),
+					`Async request failed: ${(statusResponse.error as string) || 'Unknown error'}`,
+					{ itemIndex: this.itemIndex },
+				);
+			}
+
+			// 等待后继续轮询
+			// Use a simple delay using busy wait to avoid restricted globals
+			const delay = (ms: number) => {
+				const start = Date.now();
+				while (Date.now() - start < ms) {
+					// Busy wait - acceptable for short polling intervals
+				}
+			};
+			delay(pollInterval);
+		}
+	}
 
 	async makeRequest(
 		method: 'GET' | 'POST',
