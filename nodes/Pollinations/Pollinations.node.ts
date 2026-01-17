@@ -1,4 +1,11 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { imageGenerationOperation, executeImageGeneration } from './operations/imageGeneration';
 import { videoGenerationOperation, executeVideoGeneration } from './operations/videoGeneration';
@@ -70,6 +77,52 @@ export class Pollinations implements INodeType {
 			...textGenerationOperation,
 			...audioGenerationOperation,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getImageModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const models = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: 'https://gen.pollinations.ai/image/models',
+				})) as Array<{ name: string; output_modalities: string[] }>;
+
+				return models
+					.filter((m) => m.output_modalities?.includes('image'))
+					.map((m) => ({
+						name: m.name.charAt(0).toUpperCase() + m.name.slice(1),
+						value: m.name,
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name));
+			},
+			async getVideoModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const models = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: 'https://gen.pollinations.ai/image/models',
+				})) as Array<{ name: string; output_modalities: string[] }>;
+
+				return models
+					.filter((m) => m.output_modalities?.includes('video'))
+					.map((m) => ({
+						name: m.name.charAt(0).toUpperCase() + m.name.slice(1),
+						value: m.name,
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name));
+			},
+			async getTextModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const response = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: 'https://gen.pollinations.ai/v1/models',
+				})) as { data: Array<{ id: string }> };
+
+				return response.data
+					.map((m) => ({
+						name: m.id.charAt(0).toUpperCase() + m.id.slice(1).replace(/-/g, ' '),
+						value: m.id,
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name));
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

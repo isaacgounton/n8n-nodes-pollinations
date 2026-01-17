@@ -15,7 +15,7 @@ export const imageGenerationOperation: INodeProperties[] = [
 		},
 		description: 'Text description of the image to generate',
 	},
-	{
+	({
 		displayName: 'Model',
 		name: 'model',
 		type: 'options',
@@ -24,46 +24,11 @@ export const imageGenerationOperation: INodeProperties[] = [
 				operation: ['imageGeneration'],
 			},
 		},
-		options: [
-			{
-				name: 'Flux (Default)',
-				value: 'flux',
-				description: 'High-quality image generation',
-			},
-			{
-				name: 'GPT Image',
-				value: 'gptimage',
-				description: 'GPT-powered image generation',
-			},
-			{
-				name: 'Kontext',
-				value: 'kontext',
-				description: 'Supports image-to-image transformation',
-			},
-			{
-				name: 'Nanobanana',
-				value: 'nanobanana',
-				description: 'Lightweight model',
-			},
-			{
-				name: 'Nanobanana Pro',
-				value: 'nanobanana-pro',
-				description: 'Enhanced lightweight model',
-			},
-			{
-				name: 'Seedream',
-				value: 'seedream',
-				description: 'Creative image generation',
-			},
-			{
-				name: 'Turbo',
-				value: 'turbo',
-				description: 'Fast image generation',
-			},
-		],
-		default: 'flux',
+		loadOptionsMethod: 'getImageModels',
+		default: '',
 		description: 'AI model to use for image generation',
-	},
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	} as any as INodeProperties),
 	{
 		displayName: 'Width',
 		name: 'width',
@@ -131,7 +96,14 @@ export const imageGenerationOperation: INodeProperties[] = [
 				name: 'imageUrl',
 				type: 'string',
 				default: '',
-				description: 'URL of input image for image-to-image transformation (kontext model)',
+				description: 'URL of input image(s) for image-to-image/edit. Comma/pipe separated for multiple.',
+			},
+			{
+				displayName: 'Negative Prompt',
+				name: 'negative_prompt',
+				type: 'string',
+				default: 'worst quality, blurry',
+				description: 'What to avoid in the generated image',
 			},
 			{
 				displayName: 'No Logo',
@@ -146,6 +118,19 @@ export const imageGenerationOperation: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to keep the generation private',
+			},
+			{
+				displayName: 'Quality',
+				name: 'quality',
+				type: 'options',
+				options: [
+					{ name: 'Low', value: 'low' },
+					{ name: 'Medium', value: 'medium' },
+					{ name: 'High', value: 'high' },
+					{ name: 'HD', value: 'hd' },
+				],
+				default: 'medium',
+				description: 'Image quality level (gptimage only)',
 			},
 			{
 				displayName: 'Safe Mode',
@@ -166,7 +151,7 @@ export const imageGenerationOperation: INodeProperties[] = [
 				name: 'transparent',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to generate image with transparent background',
+				description: 'Whether to generate image with transparent background (gptimage only)',
 			},
 		],
 	},
@@ -189,6 +174,8 @@ export async function executeImageGeneration(
 		transparent?: boolean;
 		count?: number;
 		imageUrl?: string;
+		negative_prompt?: string;
+		quality?: string;
 	};
 
 	// Build query parameters
@@ -211,6 +198,12 @@ export async function executeImageGeneration(
 	}
 	if (additionalOptions.imageUrl) {
 		queryParams.image = additionalOptions.imageUrl;
+	}
+	if (additionalOptions.negative_prompt) {
+		queryParams.negative_prompt = additionalOptions.negative_prompt;
+	}
+	if (additionalOptions.quality) {
+		queryParams.quality = additionalOptions.quality;
 	}
 
 	// Get credentials if available

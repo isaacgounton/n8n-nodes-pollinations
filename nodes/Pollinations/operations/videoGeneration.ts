@@ -24,21 +24,11 @@ export const videoGenerationOperation: INodeProperties[] = [
 				operation: ['videoGeneration'],
 			},
 		},
-		options: [
-			{
-				name: 'Veo',
-				value: 'veo',
-				description: 'Text-to-video (4-8 seconds)',
-			},
-			{
-				name: 'Seedance',
-				value: 'seedance',
-				description: 'Text-to-video and image-to-video (2-10 seconds)',
-			},
-		],
-		default: 'veo',
+		loadOptionsMethod: 'getVideoModels',
+		default: '',
 		description: 'AI model to use for video generation',
-	},
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	} as any as INodeProperties,
 	{
 		displayName: 'Width',
 		name: 'width',
@@ -84,11 +74,47 @@ export const videoGenerationOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Seed',
-				name: 'seed',
+				displayName: 'Aspect Ratio',
+				name: 'aspectRatio',
+				type: 'options',
+				options: [
+					{ name: '16:9', value: '16:9' },
+					{ name: '9:16', value: '9:16' },
+				],
+				default: '16:9',
+				description: 'Video aspect ratio (veo, seedance)',
+			},
+			{
+				displayName: 'Duration (Seconds)',
+				name: 'duration',
 				type: 'number',
-				default: -1,
-				description: 'Random seed for reproducible results (-1 for random)',
+				default: 4,
+				description: 'Video duration in seconds (veo: 4, 6, 8; seedance: 2-10)',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 10,
+				},
+			},
+			{
+				displayName: 'Enable Audio',
+				name: 'audio',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable audio generation for video (veo only)',
+			},
+			{
+				displayName: 'Input Image URL',
+				name: 'imageUrl',
+				type: 'string',
+				default: '',
+				description: 'URL of input image(s). For veo: image[0]=first frame, image[1]=last frame (interpolation).',
+			},
+			{
+				displayName: 'Negative Prompt',
+				name: 'negative_prompt',
+				type: 'string',
+				default: 'worst quality, blurry',
+				description: 'What to avoid in the generated video',
 			},
 			{
 				displayName: 'Private',
@@ -98,11 +124,18 @@ export const videoGenerationOperation: INodeProperties[] = [
 				description: 'Whether to keep the generation private',
 			},
 			{
-				displayName: 'Input Image URL',
-				name: 'imageUrl',
-				type: 'string',
-				default: '',
-				description: 'URL of input image for image-to-video (seedance model)',
+				displayName: 'Safe Mode',
+				name: 'safe',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable strict NSFW content filtering',
+			},
+			{
+				displayName: 'Seed',
+				name: 'seed',
+				type: 'number',
+				default: -1,
+				description: 'Random seed for reproducible results (-1 for random)',
 			},
 		],
 	},
@@ -120,6 +153,11 @@ export async function executeVideoGeneration(
 		seed?: number;
 		private?: boolean;
 		imageUrl?: string;
+		duration?: number;
+		aspectRatio?: string;
+		audio?: boolean;
+		negative_prompt?: string;
+		safe?: boolean;
 	};
 
 	// Build query parameters
@@ -135,6 +173,21 @@ export async function executeVideoGeneration(
 	if (additionalOptions.private) queryParams.private = 'true';
 	if (additionalOptions.imageUrl) {
 		queryParams.image = additionalOptions.imageUrl;
+	}
+	if (additionalOptions.duration) {
+		queryParams.duration = additionalOptions.duration.toString();
+	}
+	if (additionalOptions.aspectRatio) {
+		queryParams.aspectRatio = additionalOptions.aspectRatio;
+	}
+	if (additionalOptions.audio) {
+		queryParams.audio = 'true';
+	}
+	if (additionalOptions.negative_prompt) {
+		queryParams.negative_prompt = additionalOptions.negative_prompt;
+	}
+	if (additionalOptions.safe) {
+		queryParams.safe = 'true';
 	}
 
 	// Get credentials if available

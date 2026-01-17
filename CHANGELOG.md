@@ -13,25 +13,32 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **Image Generation**: Support for 7 AI models (Flux, Turbo, GPT Image, Kontext, Seedream, Nanobanana, Nanobanana Pro)
+- **Dynamic Model Loading**: AI models for Image, Video, and Text generation are now fetched dynamically from Pollinations.ai at runtime.
+- **Image Generation**: Support for 7+ AI models (Flux, Turbo, GPT Image, Kontext, Seedream, Nanobanana, Nanobanana Pro)
   - Width & Height configuration (16-2048px)
   - Seed for reproducibility
   - Enhancement options (nologo, enhance, transparent, safe mode)
-  - Image count (1-4 for premium models)
+  - **New Parameters**: `negative_prompt`, `quality` (gptimage), `transparent` background
   - Image-to-image transformation with Kontext model
-- **Video Generation**: Support for 2 video models
-  - Veo: Text-to-video (4-8 seconds)
-  - Seedance: Text-to-video and image-to-video (2-10 seconds)
+- **Video Generation**: Support for multiple video models (Veo, Seedance, Seedance Pro)
+  - **Advanced Controls**: `duration` (2-10s), `aspectRatio` (16:9, 9:16)
+  - **Audio Support**: Optional audio generation for `veo` model
+  - Image-to-video and frame interpolation for `veo` (image[0]=first, image[1]=last)
+  - Support for `negative_prompt` and `safe` filtering
 - **Text Generation**: Support for 20+ language models
   - Simple text endpoint for quick generation
   - OpenAI-compatible chat completions
+  - **Vision Support**: Analyze images via optional Image URL in chat messages
+  - **JSON Mode**: Support for `response_format: json_object` for structured data
+  - **Advanced Reasoning**: Controls for `reasoning_effort` and `thinking_budget` (o1/o3/R1)
   - Models: OpenAI, Claude, Gemini, Mistral, DeepSeek, Grok, Qwen Coder, Perplexity, and more
-  - Advanced parameters: temperature, max_tokens, top_p, streaming
+  - Advanced parameters: temperature, max_tokens, top_p, seed
 - **Audio Generation**: Text-to-speech with 13 voices
   - Voices: Alloy, Echo, Fable, Onyx, Nova, Shimmer, Coral, Verse, Ballad, Ash, Sage, Amuch, Dan
   - Audio formats: WAV, MP3, FLAC, Opus, PCM16
 - **New Credentials**: PollinationsApi credentials with API key authentication
 - **Comprehensive Documentation**: Updated README with all features and usage examples
+- **Alphabetized Selection**: All remaining static options are now alphabetized for a cleaner UI.
 
 ### Removed
 

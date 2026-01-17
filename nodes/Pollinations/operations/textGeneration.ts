@@ -52,31 +52,11 @@ export const textGenerationOperation: INodeProperties[] = [
 				textGenerationType: ['chat'],
 			},
 		},
-		options: [
-			{ name: 'Claude', value: 'claude' },
-			{ name: 'Claude Fast', value: 'claude-fast' },
-			{ name: 'Claude Large', value: 'claude-large' },
-			{ name: 'DeepSeek', value: 'deepseek' },
-			{ name: 'Gemini', value: 'gemini' },
-			{ name: 'Gemini Fast', value: 'gemini-fast' },
-			{ name: 'Gemini Large', value: 'gemini-large' },
-			{ name: 'Gemini Search', value: 'gemini-search' },
-			{ name: 'GLM', value: 'glm' },
-			{ name: 'Grok', value: 'grok' },
-			{ name: 'Kimi', value: 'kimi' },
-			{ name: 'Minimax', value: 'minimax' },
-			{ name: 'Mistral', value: 'mistral' },
-			{ name: 'Nova Fast', value: 'nova-fast' },
-			{ name: 'OpenAI (Default)', value: 'openai' },
-			{ name: 'OpenAI Fast', value: 'openai-fast' },
-			{ name: 'OpenAI Large', value: 'openai-large' },
-			{ name: 'Perplexity Fast', value: 'perplexity-fast' },
-			{ name: 'Perplexity Reasoning', value: 'perplexity-reasoning' },
-			{ name: 'Qwen Coder', value: 'qwen-coder' },
-		],
-		default: 'openai',
+		loadOptionsMethod: 'getTextModels',
+		default: '',
 		description: 'AI model to use for text generation',
-	},
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	} as any as INodeProperties,
 	{
 		displayName: 'Messages',
 		name: 'messages',
@@ -135,6 +115,13 @@ export const textGenerationOperation: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'JSON Mode',
+				name: 'jsonMode',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable JSON mode (response_format: json_object)',
+			},
+			{
 				displayName: 'Max Tokens',
 				name: 'max_tokens',
 				type: 'number',
@@ -142,18 +129,25 @@ export const textGenerationOperation: INodeProperties[] = [
 				description: 'Maximum number of tokens to generate',
 			},
 			{
+				displayName: 'Reasoning Effort',
+				name: 'reasoning_effort',
+				type: 'options',
+				options: [
+					{ name: 'High', value: 'high' },
+					{ name: 'Low', value: 'low' },
+					{ name: 'Medium', value: 'medium' },
+					{ name: 'Minimal', value: 'minimal' },
+					{ name: 'None', value: 'none' },
+				],
+				default: 'medium',
+				description: 'Reasoning effort for o1/o3/deepseek-r1 models',
+			},
+			{
 				displayName: 'Seed',
 				name: 'seed',
 				type: 'number',
 				default: -1,
 				description: 'Random seed for reproducible results (-1 for random)',
-			},
-			{
-				displayName: 'Stream',
-				name: 'stream',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to stream the response',
 			},
 			{
 				displayName: 'Temperature',
@@ -166,6 +160,13 @@ export const textGenerationOperation: INodeProperties[] = [
 					maxValue: 2,
 					numberPrecision: 1,
 				},
+			},
+			{
+				displayName: 'Thinking Budget Tokens',
+				name: 'thinking_budget',
+				type: 'number',
+				default: 0,
+				description: 'Token budget for reasoning (thinking) models (0 to disable)',
 			},
 			{
 				displayName: 'Top P',
@@ -229,30 +230,36 @@ export async function executeTextGeneration(
 		// Chat completion
 		const model = this.getNodeParameter('textModel', itemIndex) as string;
 		const messagesData = this.getNodeParameter('messages', itemIndex) as {
-			messageValues: Array<{ role: string; content: string }>;
+			messageValues: Array<{ role: string; content: string; image_url?: string }>;
 		};
 		const additionalOptions = this.getNodeParameter('textAdditionalOptions', itemIndex, {}) as {
 			temperature?: number;
 			max_tokens?: number;
 			top_p?: number;
-			stream?: boolean;
 			seed?: number;
+			jsonMode?: boolean;
+			reasoning_effort?: string;
+			thinking_budget?: number;
 		};
 
-		const messages = messagesData.messageValues.map((msg) => ({
-			role: msg.role,
-			content: msg.content,
-		}));
+		const messages = messagesData.messageValues.map((msg) => {
+			if (msg.image_url) {
+				return {
+					role: msg.role,
+					content: [
+						{ type: 'text', text: msg.content },
+						{ type: 'image_url', image_url: { url: msg.image_url } },
+					],
+				};
+			}
+			return {
+				role: msg.role,
+				content: msg.content,
+			};
+		});
 
-		const body: {
-			model: string;
-			messages: Array<{ role: string; content: string }>;
-			temperature?: number;
-			max_tokens?: number;
-			top_p?: number;
-			stream?: boolean;
-			seed?: number;
-		} = {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const body: Record<string, any> = {
 			model,
 			messages,
 		};
@@ -260,9 +267,20 @@ export async function executeTextGeneration(
 		if (additionalOptions.temperature !== undefined) body.temperature = additionalOptions.temperature;
 		if (additionalOptions.max_tokens) body.max_tokens = additionalOptions.max_tokens;
 		if (additionalOptions.top_p !== undefined) body.top_p = additionalOptions.top_p;
-		if (additionalOptions.stream) body.stream = additionalOptions.stream;
 		if (additionalOptions.seed !== undefined && additionalOptions.seed !== -1) {
 			body.seed = additionalOptions.seed;
+		}
+		if (additionalOptions.jsonMode) {
+			body.response_format = { type: 'json_object' };
+		}
+		if (additionalOptions.reasoning_effort) {
+			body.reasoning_effort = additionalOptions.reasoning_effort;
+		}
+		if (additionalOptions.thinking_budget) {
+			body.thinking = {
+				type: 'enabled',
+				budget_tokens: additionalOptions.thinking_budget,
+			};
 		}
 
 		try {
