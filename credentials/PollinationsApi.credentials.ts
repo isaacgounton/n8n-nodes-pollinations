@@ -2,6 +2,7 @@ import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
+	Icon,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -9,6 +10,8 @@ export class PollinationsApi implements ICredentialType {
 	name = 'pollinationsApi';
 
 	displayName = 'Pollinations API';
+
+	icon = 'file:../nodes/Pollinations/pollinations.svg' as Icon;
 
 	documentationUrl = 'https://pollinations.ai';
 
