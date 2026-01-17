@@ -29,18 +29,18 @@ export const audioGenerationOperation: INodeProperties[] = [
 		},
 		options: [
 			{ name: 'Alloy', value: 'alloy' },
+			{ name: 'Amuch', value: 'amuch' },
+			{ name: 'Ash', value: 'ash' },
+			{ name: 'Ballad', value: 'ballad' },
+			{ name: 'Coral', value: 'coral' },
+			{ name: 'Dan', value: 'dan' },
 			{ name: 'Echo', value: 'echo' },
 			{ name: 'Fable', value: 'fable' },
-			{ name: 'Onyx', value: 'onyx' },
 			{ name: 'Nova', value: 'nova' },
-			{ name: 'Shimmer', value: 'shimmer' },
-			{ name: 'Coral', value: 'coral' },
-			{ name: 'Verse', value: 'verse' },
-			{ name: 'Ballad', value: 'ballad' },
-			{ name: 'Ash', value: 'ash' },
+			{ name: 'Onyx', value: 'onyx' },
 			{ name: 'Sage', value: 'sage' },
-			{ name: 'Amuch', value: 'amuch' },
-			{ name: 'Dan', value: 'dan' },
+			{ name: 'Shimmer', value: 'shimmer' },
+			{ name: 'Verse', value: 'verse' },
 		],
 		default: 'alloy',
 		description: 'Voice to use for text-to-speech',
@@ -55,11 +55,11 @@ export const audioGenerationOperation: INodeProperties[] = [
 			},
 		},
 		options: [
-			{ name: 'WAV', value: 'wav' },
-			{ name: 'MP3', value: 'mp3' },
 			{ name: 'FLAC', value: 'flac' },
+			{ name: 'MP3', value: 'mp3' },
 			{ name: 'Opus', value: 'opus' },
 			{ name: 'PCM16', value: 'pcm16' },
+			{ name: 'WAV', value: 'wav' },
 		],
 		default: 'mp3',
 		description: 'Audio output format',
@@ -75,13 +75,13 @@ export async function executeAudioGeneration(
 	const format = this.getNodeParameter('audioFormat', itemIndex) as string;
 
 	// Get credentials if available
-	let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 	try {
 		const credentials = await this.getCredentials('pollinationsApi');
 		if (credentials?.apiKey) {
 			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
 		}
-	} catch (error) {
+	} catch {
 		// Credentials are optional, continue without them
 	}
 

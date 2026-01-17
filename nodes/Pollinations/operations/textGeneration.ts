@@ -53,26 +53,26 @@ export const textGenerationOperation: INodeProperties[] = [
 			},
 		},
 		options: [
-			{ name: 'OpenAI (Default)', value: 'openai' },
-			{ name: 'OpenAI Fast', value: 'openai-fast' },
-			{ name: 'OpenAI Large', value: 'openai-large' },
 			{ name: 'Claude', value: 'claude' },
 			{ name: 'Claude Fast', value: 'claude-fast' },
 			{ name: 'Claude Large', value: 'claude-large' },
+			{ name: 'DeepSeek', value: 'deepseek' },
 			{ name: 'Gemini', value: 'gemini' },
 			{ name: 'Gemini Fast', value: 'gemini-fast' },
 			{ name: 'Gemini Large', value: 'gemini-large' },
 			{ name: 'Gemini Search', value: 'gemini-search' },
-			{ name: 'Mistral', value: 'mistral' },
-			{ name: 'DeepSeek', value: 'deepseek' },
+			{ name: 'GLM', value: 'glm' },
 			{ name: 'Grok', value: 'grok' },
-			{ name: 'Qwen Coder', value: 'qwen-coder' },
+			{ name: 'Kimi', value: 'kimi' },
+			{ name: 'Minimax', value: 'minimax' },
+			{ name: 'Mistral', value: 'mistral' },
+			{ name: 'Nova Fast', value: 'nova-fast' },
+			{ name: 'OpenAI (Default)', value: 'openai' },
+			{ name: 'OpenAI Fast', value: 'openai-fast' },
+			{ name: 'OpenAI Large', value: 'openai-large' },
 			{ name: 'Perplexity Fast', value: 'perplexity-fast' },
 			{ name: 'Perplexity Reasoning', value: 'perplexity-reasoning' },
-			{ name: 'Kimi', value: 'kimi' },
-			{ name: 'Nova Fast', value: 'nova-fast' },
-			{ name: 'GLM', value: 'glm' },
-			{ name: 'Minimax', value: 'minimax' },
+			{ name: 'Qwen Coder', value: 'qwen-coder' },
 		],
 		default: 'openai',
 		description: 'AI model to use for text generation',
@@ -135,6 +135,27 @@ export const textGenerationOperation: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Max Tokens',
+				name: 'max_tokens',
+				type: 'number',
+				default: 1000,
+				description: 'Maximum number of tokens to generate',
+			},
+			{
+				displayName: 'Seed',
+				name: 'seed',
+				type: 'number',
+				default: -1,
+				description: 'Random seed for reproducible results (-1 for random)',
+			},
+			{
+				displayName: 'Stream',
+				name: 'stream',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to stream the response',
+			},
+			{
 				displayName: 'Temperature',
 				name: 'temperature',
 				type: 'number',
@@ -145,13 +166,6 @@ export const textGenerationOperation: INodeProperties[] = [
 					maxValue: 2,
 					numberPrecision: 1,
 				},
-			},
-			{
-				displayName: 'Max Tokens',
-				name: 'max_tokens',
-				type: 'number',
-				default: 1000,
-				description: 'Maximum number of tokens to generate',
 			},
 			{
 				displayName: 'Top P',
@@ -165,20 +179,6 @@ export const textGenerationOperation: INodeProperties[] = [
 					numberPrecision: 2,
 				},
 			},
-			{
-				displayName: 'Stream',
-				name: 'stream',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to stream the response',
-			},
-			{
-				displayName: 'Seed',
-				name: 'seed',
-				type: 'number',
-				default: -1,
-				description: 'Random seed for reproducible results (-1 for random)',
-			},
 		],
 	},
 ];
@@ -190,13 +190,13 @@ export async function executeTextGeneration(
 	const generationType = this.getNodeParameter('textGenerationType', itemIndex) as string;
 
 	// Get credentials if available
-	let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 	try {
 		const credentials = await this.getCredentials('pollinationsApi');
 		if (credentials?.apiKey) {
 			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
 		}
-	} catch (error) {
+	} catch {
 		// Credentials are optional, continue without them
 	}
 
@@ -244,7 +244,15 @@ export async function executeTextGeneration(
 			content: msg.content,
 		}));
 
-		const body: any = {
+		const body: {
+			model: string;
+			messages: Array<{ role: string; content: string }>;
+			temperature?: number;
+			max_tokens?: number;
+			top_p?: number;
+			stream?: boolean;
+			seed?: number;
+		} = {
 			model,
 			messages,
 		};

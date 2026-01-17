@@ -31,11 +31,6 @@ export const imageGenerationOperation: INodeProperties[] = [
 				description: 'High-quality image generation',
 			},
 			{
-				name: 'Turbo',
-				value: 'turbo',
-				description: 'Fast image generation',
-			},
-			{
 				name: 'GPT Image',
 				value: 'gptimage',
 				description: 'GPT-powered image generation',
@@ -46,11 +41,6 @@ export const imageGenerationOperation: INodeProperties[] = [
 				description: 'Supports image-to-image transformation',
 			},
 			{
-				name: 'Seedream',
-				value: 'seedream',
-				description: 'Creative image generation',
-			},
-			{
 				name: 'Nanobanana',
 				value: 'nanobanana',
 				description: 'Lightweight model',
@@ -59,6 +49,16 @@ export const imageGenerationOperation: INodeProperties[] = [
 				name: 'Nanobanana Pro',
 				value: 'nanobanana-pro',
 				description: 'Enhanced lightweight model',
+			},
+			{
+				name: 'Seedream',
+				value: 'seedream',
+				description: 'Creative image generation',
+			},
+			{
+				name: 'Turbo',
+				value: 'turbo',
+				description: 'Fast image generation',
 			},
 		],
 		default: 'flux',
@@ -109,11 +109,29 @@ export const imageGenerationOperation: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Seed',
-				name: 'seed',
+				displayName: 'Enhance Prompt',
+				name: 'enhance',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use AI to improve the prompt',
+			},
+			{
+				displayName: 'Image Count',
+				name: 'count',
 				type: 'number',
-				default: -1,
-				description: 'Random seed for reproducible results (-1 for random)',
+				default: 1,
+				description: 'Number of images to generate (1-4, premium models only)',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 4,
+				},
+			},
+			{
+				displayName: 'Input Image URL',
+				name: 'imageUrl',
+				type: 'string',
+				default: '',
+				description: 'URL of input image for image-to-image transformation (kontext model)',
 			},
 			{
 				displayName: 'No Logo',
@@ -137,11 +155,11 @@ export const imageGenerationOperation: INodeProperties[] = [
 				description: 'Whether to enable strict NSFW content filtering',
 			},
 			{
-				displayName: 'Enhance Prompt',
-				name: 'enhance',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to use AI to improve the prompt',
+				displayName: 'Seed',
+				name: 'seed',
+				type: 'number',
+				default: -1,
+				description: 'Random seed for reproducible results (-1 for random)',
 			},
 			{
 				displayName: 'Transparent Background',
@@ -149,24 +167,6 @@ export const imageGenerationOperation: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to generate image with transparent background',
-			},
-			{
-				displayName: 'Image Count',
-				name: 'count',
-				type: 'number',
-				default: 1,
-				description: 'Number of images to generate (1-4, premium models only)',
-				typeOptions: {
-					minValue: 1,
-					maxValue: 4,
-				},
-			},
-			{
-				displayName: 'Input Image URL',
-				name: 'imageUrl',
-				type: 'string',
-				default: '',
-				description: 'URL of input image for image-to-image transformation (kontext model)',
 			},
 		],
 	},
@@ -214,13 +214,13 @@ export async function executeImageGeneration(
 	}
 
 	// Get credentials if available
-	let headers: Record<string, string> = {};
+	const headers: Record<string, string> = {};
 	try {
 		const credentials = await this.getCredentials('pollinationsApi');
 		if (credentials?.apiKey) {
 			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
 		}
-	} catch (error) {
+	} catch {
 		// Credentials are optional, continue without them
 	}
 

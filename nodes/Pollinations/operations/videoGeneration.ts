@@ -138,13 +138,13 @@ export async function executeVideoGeneration(
 	}
 
 	// Get credentials if available
-	let headers: Record<string, string> = {};
+	const headers: Record<string, string> = {};
 	try {
 		const credentials = await this.getCredentials('pollinationsApi');
 		if (credentials?.apiKey) {
 			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
 		}
-	} catch (error) {
+	} catch {
 		// Credentials are optional, continue without them
 	}
 
