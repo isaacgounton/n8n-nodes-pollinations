@@ -19,7 +19,7 @@ export class PollinationsApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-			description: 'Your Pollinations API Key. Get one at https://enter.pollinations.ai',
+			description: 'Your Pollinations Secret Key (sk_). Get one at https://enter.pollinations.ai. Use Secret Keys for server-side n8n workflows, not Publishable Keys (pk_).',
 		},
 	];
 

@@ -30,10 +30,25 @@ To use this node, you'll need a Pollinations API key:
 
 1. Visit [enter.pollinations.ai](https://enter.pollinations.ai)
 2. Sign up or log in
-3. Create an API key (Secret Key recommended for n8n)
+3. **Create a Secret Key (sk\_)** - Required for n8n server-side use
 4. Add the API key to your n8n credentials
 
-**Note**: While Pollinations offers a free tier, an API key is recommended for production use to avoid rate limits.
+### API Key Types
+
+Pollinations offers two types of API keys:
+
+- **Secret Keys (`sk_`)** ⭐ **Recommended for n8n**
+  - Server-side only, no rate limits
+  - Keep secret - never expose publicly
+  - Perfect for n8n workflows
+
+- **Publishable Keys (`pk_`)** ⚠️ **Not recommended for n8n**
+  - Beta - not ready for production
+  - IP rate-limited (1 pollen per IP per hour)
+  - For client-side apps only
+  - Will consume your Pollen if exposed in public code
+
+**Important**: Always use **Secret Keys (sk\_)** in n8n for unlimited, server-side access.
 
 ## Operations
 
