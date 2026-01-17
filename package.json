@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"description": "n8n community node for Pollinations.ai - Generate images, videos, text, and audio using AI",
 	"license": "MIT",
-	"homepage": "https://github.com/MaskerPRC/n8n-nodes-pollinations",
+	"homepage": "https://github.com/isaacgounton/n8n-nodes-pollinations",
 	"keywords": [
 		"n8n-community-node-package",
 		"n8n",
@@ -19,12 +19,12 @@
 		"openai"
 	],
 	"author": {
-		"name": "n8n",
+		"name": "isaacgounton",
 		"email": "info@n8n.io"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/MaskerPRC/n8n-nodes-pollinations.git"
+		"url": "git+https://github.com/isaacgounton/n8n-nodes-pollinations.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",
