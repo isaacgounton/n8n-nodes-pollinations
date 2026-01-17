@@ -22,7 +22,8 @@ export class PollinationsApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-			description: 'Your Pollinations Secret Key (sk_). Get one at https://enter.pollinations.ai. Use Secret Keys for server-side n8n workflows, not Publishable Keys (pk_).',
+			required: true,
+			description: 'Your Pollinations Secret Key (sk_). Get one at https://enter.pollinations.ai. Use Secret Keys for server-side n8n workflows.',
 		},
 	];
 
@@ -30,7 +31,7 @@ export class PollinationsApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '=Bearer {{$credentials.apiKey}}',
+				Authorization: 'Bearer {{$credentials.apiKey}}',
 			},
 		},
 	};
@@ -38,7 +39,7 @@ export class PollinationsApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://gen.pollinations.ai',
-			url: '/account/balance',
+			url: '/account/profile',
 			method: 'GET',
 		},
 	};
