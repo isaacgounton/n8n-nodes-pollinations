@@ -71,9 +71,14 @@ Generate images from text prompts using various AI models.
 - Model selection
 - Width & Height (16-2048px)
 - Seed (for reproducibility)
-- Enhancement options (nologo, enhance, transparent, safe mode)
-- Image count (1-4 for premium models)
-- Input image URL (for image-to-image with Kontext)
+- **Advanced Options**:
+  - Image Count (1-4 for premium models)
+  - Negative Prompt (exclude content)
+  - Quality Level (for `gptimage` model)
+  - Transparent Background (for `gptimage` model)
+  - Content Filters (Safe Mode)
+  - Prompt Enhancement
+- Input image URL (for image-to-image/edit)
 
 ### Video Generation
 
@@ -90,7 +95,13 @@ Create videos from text descriptions or images.
 - Model selection
 - Width & Height
 - Seed
-- Input image URL (for image-to-video)
+- **Advanced Options**:
+  - Aspect Ratio (16:9, 9:16)
+  - Duration (2-10 seconds)
+  - Enable Audio (for `veo` model)
+  - Negative Prompt
+  - Safe Mode Filtering
+- Input image URL (for image-to-video or frame interpolation)
 
 ### Text Generation
 
@@ -107,8 +118,11 @@ Generate text using advanced language models.
 
 - Messages (for chat completion)
 - Temperature, Max Tokens, Top P
-- Streaming support
 - Seed for reproducibility
+- **Advanced Options**:
+  - JSON Mode (returns structured data)
+  - Reasoning Effort (for thinking models)
+  - Thinking Budget Tokens (for o1/o3/R1 models)
 
 ### Audio Generation
 
@@ -162,7 +176,7 @@ The generated image will be available as binary data.
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
 - [Pollinations.ai Official Site](https://pollinations.ai)
 - [Pollinations API Documentation](https://enter.pollinations.ai/api/docs)
-- [GitHub Repository](https://github.com/MaskerPRC/n8n-nodes-pollinations)
+- [GitHub Repository](https://github.com/isaacgounton/n8n-nodes-pollinations)
 
 ## Version History
 
