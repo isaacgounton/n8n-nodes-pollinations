@@ -1,4 +1,4 @@
-# n8n-nodes-pollinations
+# n8n-nodes-pollinations-ai
 
 This is an n8n community node for [Pollinations.ai](https://pollinations.ai) - a unified platform for AI-powered image, video, text, and audio generation.
 
@@ -21,7 +21,7 @@ Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes
 
 1. Go to **Settings** > **Community Nodes**
 2. Select **Install**
-3. Enter `n8n-nodes-pollinations` in **Enter npm package name**
+3. Enter `n8n-nodes-pollinations-ai` in **Enter npm package name**
 4. Agree to the risks and select **Install**
 
 ## Credentials

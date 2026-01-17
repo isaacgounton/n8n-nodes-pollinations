@@ -1,5 +1,5 @@
 {
-	"name": "n8n-nodes-pollinations",
+	"name": "n8n-nodes-pollinations-ai",
 	"version": "1.1.0",
 	"description": "n8n community node for Pollinations.ai - Generate images, videos, text, and audio using AI",
 	"license": "MIT",
