@@ -1,19 +1,22 @@
 {
-	"name": "n8n-nodes-ai-media-generate",
-	"version": "0.1.40",
-	"description": "n8n community node for AI media generation - Generate images and videos using various AI platforms",
+	"name": "n8n-nodes-pollinations",
+	"version": "1.0.0",
+	"description": "n8n community node for Pollinations.ai - Generate images, videos, text, and audio using AI",
 	"license": "MIT",
-	"homepage": "https://github.com/MaskerPRC/n8n-nodes-ai-media-generate",
+	"homepage": "https://github.com/MaskerPRC/n8n-nodes-pollinations",
 	"keywords": [
 		"n8n-community-node-package",
 		"n8n",
 		"ai",
+		"pollinations",
 		"image-generation",
 		"video-generation",
-		"media-generation",
-		"fal",
-		"genbo",
-		"replicate"
+		"text-generation",
+		"audio-generation",
+		"tts",
+		"llm",
+		"flux",
+		"openai"
 	],
 	"author": {
 		"name": "n8n",
@@ -21,7 +24,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/MaskerPRC/n8n-nodes-ai-media-generate.git"
+		"url": "git+https://github.com/MaskerPRC/n8n-nodes-pollinations.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",
@@ -39,18 +42,15 @@
 		"n8nNodesApiVersion": 1,
 		"strict": true,
 		"credentials": [
-			"dist/credentials/FalApi.credentials.js",
-			"dist/credentials/GenboApi.credentials.js",
-			"dist/credentials/ReplicateApi.credentials.js"
+			"dist/credentials/PollinationsApi.credentials.js"
 		],
 		"nodes": [
-			"dist/nodes/AiMediaGenerate/AiMediaGenerateFal.node.js",
-			"dist/nodes/AiMediaGenerate/AiMediaGenerateGenbo.node.js",
-			"dist/nodes/AiMediaGenerate/AiMediaGenerateReplicate.node.js"
+			"dist/nodes/Pollinations/Pollinations.node.js"
 		]
 	},
 	"devDependencies": {
 		"@n8n/node-cli": "*",
+		"@types/node": "^25.0.9",
 		"eslint": "9.32.0",
 		"prettier": "3.6.2",
 		"release-it": "^19.0.4",

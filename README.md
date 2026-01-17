@@ -1,90 +1,157 @@
-# n8n-nodes-fal-ai-media-generate
+# n8n-nodes-pollinations
 
-n8n community node for generating AI media content using the FAL platform. This node supports multiple models for image and video generation.
+This is an n8n community node for [Pollinations.ai](https://pollinations.ai) - a unified platform for AI-powered image, video, text, and audio generation.
+
+[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
 ## Features
 
-- **Multiple AI Models**: Support for various FAL AI models
-  - WAN 2.6 Image-to-Video: Generate videos from images
-  - Hunyuan Video 1.5 Image-to-Video: Generate videos from images using Hunyuan Video model
-  - Gemini 3 Pro Image (Edit): Edit images using AI
-  - Gemini 3 Pro Image (Text-to-Image): Generate images from text prompts
-
-- **Flexible Interface Types**: 
-  - Asynchronous requests with automatic polling
-  - Synchronous requests (for supported models)
-
-- **Comprehensive Parameters**: Full support for all model-specific parameters including resolution, aspect ratio, output format, and more
+- **Image Generation**: Create images using multiple AI models (Flux, Turbo, GPT Image, Kontext, and more)
+- **Video Generation**: Generate videos from text or images (Veo, Seedance models)
+- **Text Generation**: Use 20+ language models including OpenAI, Claude, Gemini, Mistral, and more
+- **Audio Generation**: Convert text to speech with 13 different voices and 5 audio formats
+- **OpenAI-Compatible**: Chat completions endpoint compatible with OpenAI API format
+- **Vision Support**: Analyze and describe images using multimodal models
 
 ## Installation
 
-Install this community node in your n8n instance:
+Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation.
 
-```bash
-npm install n8n-nodes-fal-ai-media-generate
-```
+### Manual Installation
 
-## Setup
+1. Go to **Settings** > **Community Nodes**
+2. Select **Install**
+3. Enter `n8n-nodes-pollinations` in **Enter npm package name**
+4. Agree to the risks and select **Install**
 
-1. Get your FAL API Key from [fal.ai](https://fal.ai)
-2. In n8n, create a new credential of type "FAL API"
-3. Enter your API Key
-4. Use the "FAL AI Media Generate" node in your workflows
+## Credentials
 
-## Supported Models
+To use this node, you'll need a Pollinations API key:
 
-### WAN 2.6 Image-to-Video
-Generate videos from images with motion based on text prompts.
+1. Visit [enter.pollinations.ai](https://enter.pollinations.ai)
+2. Sign up or log in
+3. Create an API key (Secret Key recommended for n8n)
+4. Add the API key to your n8n credentials
 
-**Features:**
-- Resolution: 720p, 1080p
-- Duration: 5, 10, or 15 seconds
-- Multi-shot support with intelligent scene segmentation
-- Audio support for background music
+**Note**: While Pollinations offers a free tier, an API key is recommended for production use to avoid rate limits.
 
-### Hunyuan Video 1.5 Image-to-Video
-Generate videos from images using the Hunyuan Video model.
+## Operations
 
-**Features:**
-- Resolution: 480p
-- Aspect ratios: 16:9, 9:16
-- Configurable number of frames (default: 121)
-- Configurable inference steps (default: 28)
-- Prompt expansion support
-- Negative prompt support
+### Image Generation
 
-### Gemini 3 Pro Image (Edit)
-Edit images using AI with text prompts.
+Generate images from text prompts using various AI models.
 
-**Features:**
-- Multiple image input support
-- Various aspect ratios (21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16)
-- Resolution options: 1K, 2K, 4K
-- Output formats: JPEG, PNG, WebP
+**Models Available**:
 
-### Gemini 3 Pro Image (Text-to-Image)
-Generate images from text descriptions.
+- Flux (default) - High-quality image generation
+- Turbo - Fast image generation
+- GPT Image - GPT-powered images
+- Kontext - Supports image-to-image transformation
+- Seedream - Creative generation
+- Nanobanana / Nanobanana Pro - Lightweight models
 
-**Features:**
-- Pure text-to-image generation
-- Multiple aspect ratios
-- Resolution options: 1K, 2K, 4K
-- Output formats: JPEG, PNG, WebP
-- Web search support for latest information
+**Parameters**:
 
-## Usage
+- Prompt (required)
+- Model selection
+- Width & Height (16-2048px)
+- Seed (for reproducibility)
+- Enhancement options (nologo, enhance, transparent, safe mode)
+- Image count (1-4 for premium models)
+- Input image URL (for image-to-image with Kontext)
 
-1. Add the "FAL AI Media Generate" node to your workflow
-2. Select the model you want to use
-3. Choose the interface type (Synchronous or Asynchronous)
-4. Fill in the required parameters (prompt, image URLs, etc.)
-5. Execute the workflow
+### Video Generation
+
+Create videos from text descriptions or images.
+
+**Models Available**:
+
+- Veo - Text-to-video (4-8 seconds)
+- Seedance - Text-to-video and image-to-video (2-10 seconds)
+
+**Parameters**:
+
+- Prompt (required)
+- Model selection
+- Width & Height
+- Seed
+- Input image URL (for image-to-video)
+
+### Text Generation
+
+Generate text using advanced language models.
+
+**Generation Types**:
+
+1. **Simple Text**: Quick text generation from a prompt
+2. **Chat Completion**: OpenAI-compatible chat with conversation history
+
+**Models Available**: OpenAI, Claude, Gemini, Mistral, DeepSeek, Grok, Qwen Coder, Perplexity, and more (20+ models)
+
+**Parameters**:
+
+- Messages (for chat completion)
+- Temperature, Max Tokens, Top P
+- Streaming support
+- Seed for reproducibility
+
+### Audio Generation
+
+Convert text to speech with multiple voices and formats.
+
+**Voices Available**: Alloy, Echo, Fable, Onyx, Nova, Shimmer, Coral, Verse, Ballad, Ash, Sage, Amuch, Dan
+
+**Audio Formats**: WAV, MP3, FLAC, Opus, PCM16
+
+## Usage Examples
+
+### Generate an Image
+
+1. Add the Pollinations node to your workflow
+2. Select **Image Generation** operation
+3. Enter your prompt: "A beautiful sunset over mountains"
+4. Choose model (e.g., Flux)
+5. Set dimensions (e.g., 1024x1024)
+6. Execute the node
+
+The generated image will be available as binary data.
+
+### Create a Video
+
+1. Add the Pollinations node
+2. Select **Video Generation** operation
+3. Enter prompt: "A cat playing with a ball"
+4. Choose model (Veo or Seedance)
+5. Execute the node
+
+### Generate Text with Chat
+
+1. Add the Pollinations node
+2. Select **Text Generation** operation
+3. Choose **Chat Completion** type
+4. Select model (e.g., OpenAI, Claude, Gemini)
+5. Add messages with roles (system, user, assistant)
+6. Execute the node
+
+### Text-to-Speech
+
+1. Add the Pollinations node
+2. Select **Audio Generation** operation
+3. Enter text to convert
+4. Choose voice (e.g., Nova, Alloy)
+5. Select audio format (MP3, WAV, etc.)
+6. Execute the node
 
 ## Resources
 
-- [FAL AI Documentation](https://fal.ai/docs)
-- [n8n Documentation](https://docs.n8n.io)
-- [n8n Community Forum](https://community.n8n.io)
+- [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
+- [Pollinations.ai Official Site](https://pollinations.ai)
+- [Pollinations API Documentation](https://enter.pollinations.ai/api/docs)
+- [GitHub Repository](https://github.com/MaskerPRC/n8n-nodes-pollinations)
+
+## Version History
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## License
 
