@@ -39,7 +39,7 @@ export class PollinationsApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://gen.pollinations.ai',
-			url: '/account/profile',
+			url: '/text/models',
 			method: 'GET',
 		},
 	};
