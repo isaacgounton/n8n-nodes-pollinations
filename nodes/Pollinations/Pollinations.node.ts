@@ -30,12 +30,7 @@ export class Pollinations implements INodeType {
 		credentials: [
 			{
 				name: 'pollinationsApi',
-				required: false,
-				displayOptions: {
-					show: {
-						'@version': [1],
-					},
-				},
+				required: true,
 			},
 		],
 		properties: [
@@ -118,26 +113,26 @@ export class Pollinations implements INodeType {
 				}
 			},
 			async getTextModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const response = (await this.helpers.httpRequest({
-						method: 'GET',
-						url: 'https://gen.pollinations.ai/v1/models',
-					})) as { data: Array<{ id: string }> };
+			try {
+				const response = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: 'https://gen.pollinations.ai/v1/models',
+				})) as { data: Array<{ id: string }> };
 
-					if (!response?.data || !Array.isArray(response.data)) {
-						return [];
-					}
-
-					return response.data
-						.map((m) => ({
-							name: m.id.charAt(0).toUpperCase() + m.id.slice(1).replace(/-/g, ' '),
-							value: m.id,
-						}))
-						.sort((a, b) => a.name.localeCompare(b.name));
-				} catch {
+				if (!response?.data || !Array.isArray(response.data)) {
 					return [];
 				}
-			},
+
+				return response.data
+					.map((m) => ({
+						name: m.id.charAt(0).toUpperCase() + m.id.slice(1).replace(/-/g, ' '),
+						value: m.id,
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name));
+			} catch {
+				return [];
+			}
+		},
 		},
 	};
 

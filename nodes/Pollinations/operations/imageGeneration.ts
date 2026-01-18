@@ -15,7 +15,7 @@ export const imageGenerationOperation: INodeProperties[] = [
 		},
 		description: 'Text description of the image to generate',
 	},
-	({
+	{
 		displayName: 'Model',
 		name: 'model',
 		type: 'options',
@@ -24,11 +24,12 @@ export const imageGenerationOperation: INodeProperties[] = [
 				operation: ['imageGeneration'],
 			},
 		},
-		loadOptionsMethod: 'getImageModels',
-		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getImageModels',
+		},
+		default: 'flux',
 		description: 'AI model to use for image generation',
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	} as any as INodeProperties),
+	},
 	{
 		displayName: 'Width',
 		name: 'width',
@@ -208,13 +209,15 @@ export async function executeImageGeneration(
 
 	// Get credentials if available
 	const headers: Record<string, string> = {};
-	try {
-		const credentials = await this.getCredentials('pollinationsApi');
-		if (credentials?.apiKey) {
-			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
-	} catch {
-		// Credentials are optional, continue without them
+	const credentials = await this.getCredentials('pollinationsApi');
+	if (credentials?.apiKey) {
+		headers['Authorization'] = `Bearer ${credentials.apiKey}`;
+	} else {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Pollinations API key is required. Please add your credentials.',
+			{ itemIndex },
+		);
 	}
 
 	// Build URL with query parameters
@@ -254,9 +257,38 @@ export async function executeImageGeneration(
 			pairedItem: { item: itemIndex },
 		};
 	} catch (error) {
+		// Try to parse API error response
+		let errorMessage = error.message;
+		let errorDetails = '';
+		
+		if (error.response?.body) {
+			try {
+				const errorBody = typeof error.response.body === 'string' 
+					? JSON.parse(error.response.body)
+					: error.response.body;
+				
+				if (errorBody.error?.message) {
+					errorMessage = errorBody.error.message;
+				}
+				if (errorBody.error?.code) {
+					errorDetails = ` (${errorBody.error.code})`;
+				}
+			} catch {
+				// If can't parse, show the raw response
+				if (typeof error.response.body === 'string') {
+					errorDetails = ` - Response: ${error.response.body.substring(0, 200)}`;
+				}
+			}
+		}
+		
+		// Add status code if available
+		if (error.response?.statusCode) {
+			errorDetails += ` [HTTP ${error.response.statusCode}]`;
+		}
+		
 		throw new NodeOperationError(
 			this.getNode(),
-			`Failed to generate image: ${error.message}`,
+			`Failed to generate image: ${errorMessage}${errorDetails}`,
 			{ itemIndex },
 		);
 	}

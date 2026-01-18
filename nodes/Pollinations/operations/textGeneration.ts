@@ -52,11 +52,12 @@ export const textGenerationOperation: INodeProperties[] = [
 				textGenerationType: ['chat'],
 			},
 		},
-		loadOptionsMethod: 'getTextModels',
-		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getTextModels',
+		},
+		default: 'openai',
 		description: 'AI model to use for text generation',
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	} as any as INodeProperties,
+	},
 	{
 		displayName: 'Messages',
 		name: 'messages',

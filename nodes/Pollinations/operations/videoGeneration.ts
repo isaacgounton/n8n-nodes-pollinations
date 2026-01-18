@@ -24,11 +24,12 @@ export const videoGenerationOperation: INodeProperties[] = [
 				operation: ['videoGeneration'],
 			},
 		},
-		loadOptionsMethod: 'getVideoModels',
-		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getVideoModels',
+		},
+		default: 'veo',
 		description: 'AI model to use for video generation',
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	} as any as INodeProperties,
+	},
 	{
 		displayName: 'Width',
 		name: 'width',
