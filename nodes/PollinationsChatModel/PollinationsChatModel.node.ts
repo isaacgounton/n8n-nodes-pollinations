@@ -355,18 +355,9 @@ export class PollinationsChatModel implements INodeType {
 		loadOptions: {
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
-					const credentials = await this.getCredentials('pollinationsApi');
-					
-					if (!credentials?.apiKey) {
-						throw new ApplicationError('API key is required');
-					}
-
 					const response = await this.helpers.httpRequest({
 						method: 'GET',
 						url: 'https://gen.pollinations.ai/v1/models',
-						headers: {
-							Authorization: `Bearer ${credentials.apiKey}`,
-						},
 					});
 
 					const data = response as { data?: Array<{ id: string }> };

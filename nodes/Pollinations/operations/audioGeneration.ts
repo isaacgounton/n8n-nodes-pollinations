@@ -90,10 +90,6 @@ export async function executeAudioGeneration(
 		messages: [
 			{
 				role: 'user',
-				content: 'Please read the following text exactly as written, word for word, without adding commentary or interpretation.',
-			},
-			{
-				role: 'assistant',
 				content: text,
 			},
 		],
