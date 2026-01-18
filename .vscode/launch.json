@@ -2,6 +2,16 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Debug n8n",
+			"type": "node",
+			"request": "launch",
+			"program": "${workspaceFolder}/node_modules/@n8n/node-cli/bin/n8n-node",
+			"args": ["dev"],
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"skipFiles": ["<node_internals>/**"]
+		},
+		{
 			"name": "Attach to running n8n",
 			"processId": "${command:PickProcess}",
 			"request": "attach",

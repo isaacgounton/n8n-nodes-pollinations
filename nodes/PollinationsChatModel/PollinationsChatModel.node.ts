@@ -5,8 +5,6 @@ import type {
 	SupplyData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	IExecuteFunctions,
-	INodeExecutionData,
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -287,9 +285,9 @@ export class PollinationsChatModel implements INodeType {
 				],
 			},
 		},
-		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
-		outputNames: ['Response', 'Model'],
+		inputs: [],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
+		outputNames: ['Model'],
 		credentials: [
 			{
 				name: 'pollinationsApi',
@@ -306,16 +304,6 @@ export class PollinationsChatModel implements INodeType {
 				},
 				default: '',
 				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-			},
-			{
-				displayName: 'Message',
-				name: 'message',
-				type: 'string',
-				default: '',
-				description: 'The message to send to the AI model. If connected to a previous node, the input data will be used instead.',
-				typeOptions: {
-					rows: 4,
-				},
 			},
 			{
 				displayName: 'Options',
@@ -405,74 +393,6 @@ export class PollinationsChatModel implements INodeType {
 			},
 		},
 	};
-
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: INodeExecutionData[] = [];
-
-		for (let itemIndex = 0; itemIndex < this.getInputData().length; itemIndex++) {
-			try {
-				const credentials = await this.getCredentials('pollinationsApi');
-				const model = this.getNodeParameter('model', itemIndex) as string;
-				const options = this.getNodeParameter('options', itemIndex, {}) as {
-					temperature?: number;
-					maxTokens?: number;
-					topP?: number;
-				};
-
-				// Get input message from previous node or parameter
-				const inputItems = this.getInputData(itemIndex);
-				let inputMessage = '';
-
-				// First try to get message from parameter
-				const messageParam = this.getNodeParameter('message', itemIndex, '') as string;
-				if (messageParam.trim()) {
-					inputMessage = messageParam;
-				} else if (inputItems && inputItems.length > 0 && inputItems[0].json) {
-					// Try to extract message from input data
-					const jsonData = inputItems[0].json;
-					inputMessage = String(jsonData.message || jsonData.text || jsonData.content || jsonData.prompt || jsonData);
-				}
-
-				if (!inputMessage.trim()) {
-					throw new ApplicationError('No input message provided. Please connect a previous node or enter a message.');
-				}
-
-				const chatModel = new PollinationsChatModelInstance({
-					modelName: model,
-					temperature: options.temperature,
-					maxTokens: options.maxTokens,
-					topP: options.topP,
-					apiKey: credentials.apiKey as string,
-				});
-
-				const response = await chatModel.invoke(inputMessage);
-
-				returnData.push({
-					json: {
-						response: response.content,
-						model,
-						temperature: options.temperature,
-						maxTokens: options.maxTokens,
-						topP: options.topP,
-					},
-					pairedItem: { item: itemIndex },
-				});
-			} catch (error) {
-				if (this.continueOnFail()) {
-					const inputItems = this.getInputData(itemIndex);
-					returnData.push({
-						json: (inputItems && inputItems.length > 0 && inputItems[0].json) || {},
-						error,
-						pairedItem: { item: itemIndex },
-					});
-				} else {
-					throw error;
-				}
-			}
-		}
-
-		return [returnData];
-	}
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('pollinationsApi');
