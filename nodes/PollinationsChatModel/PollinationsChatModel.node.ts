@@ -27,6 +27,7 @@ class PollinationsChatModelInstance {
 	baseURL: string;
 	apiKey: string;
 	lc_namespace = ['langchain', 'chat_models', 'pollinations'];
+	lc_serializable = true;
 	supportsToolCalling = true;
 	boundTools: Tool[] = [];
 
@@ -47,12 +48,23 @@ class PollinationsChatModelInstance {
 	
 	// Langchain tool calling interface
 	bindTools(tools: Tool[]): this {
-		this.boundTools = tools;
-		return this;
+		const newInstance = new PollinationsChatModelInstance({
+			modelName: this.modelName,
+			temperature: this.temperature,
+			maxTokens: this.maxTokens,
+			topP: this.topP,
+			apiKey: this.apiKey,
+		});
+		newInstance.boundTools = tools;
+		return newInstance as this;
 	}
 
 	_llmType(): string {
 		return 'pollinations';
+	}
+	
+	getName(): string {
+		return 'PollinationsChatModel';
 	}
 	
 	// Runnable interface methods
@@ -60,14 +72,32 @@ class PollinationsChatModelInstance {
 		return Promise.all(inputs.map(messages => this.invoke(messages)));
 	}
 	
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	pipe(_nextRunnable: unknown): unknown {
-		return _nextRunnable;
+	pipe(nextRunnable: unknown): unknown {
+		// Proper pipe implementation for LangChain
+		const pipeFunction = async (input: unknown) => {
+			const output = await this.invoke(input as Array<{ role: string; content: string }>);
+			if (typeof nextRunnable === 'function') {
+				return await (nextRunnable as (input: unknown) => Promise<unknown>)(output);
+			}
+			if (nextRunnable && typeof nextRunnable === 'object' && 'invoke' in nextRunnable) {
+				return await (nextRunnable as { invoke: (input: unknown) => Promise<unknown> }).invoke(output);
+			}
+			return output;
+		};
+		return pipeFunction;
 	}
 	
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	withConfig(_config: unknown): this {
-		return this;
+	withConfig(config: Record<string, unknown>): this {
+		// Create new instance with updated config
+		const newInstance = new PollinationsChatModelInstance({
+			modelName: this.modelName,
+			temperature: config.temperature as number ?? this.temperature,
+			maxTokens: config.maxTokens as number ?? this.maxTokens,
+			topP: config.topP as number ?? this.topP,
+			apiKey: this.apiKey,
+		});
+		newInstance.boundTools = this.boundTools;
+		return newInstance as this;
 	}
 
 	async invoke(
