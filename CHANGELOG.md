@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-01-17
+
+### Fixed
+
+- **Chat Model Tool Calling**: Added support for function/tool calling in AI Agents
+  - Implemented `bindTools` method for tool integration
+  - Added tools parameter support to API requests
+  - Fixed model loading errors with better fallback models
+  - Improved error handling with more descriptive messages
+
+## [1.2.0] - 2026-01-17
+
+### Added
+
+- **Chat Model Support**: New Pollinations Chat Model node for use with n8n AI Agents
+  - Integrates with n8n's AI Agent, AI Chain, and other AI nodes
+  - Supports all 20+ Pollinations text models (OpenAI, Claude, Gemini, etc.)
+  - Configurable temperature, max tokens, and top P parameters
+  - Full langchain integration for advanced AI workflows
+
 ## [1.1.0] - 2026-01-17
 
 ### BREAKING CHANGES

@@ -10,6 +10,7 @@ This is an n8n community node for [Pollinations.ai](https://pollinations.ai) - a
 - **Video Generation**: Generate videos from text or images (Veo, Seedance models)
 - **Text Generation**: Use 20+ language models including OpenAI, Claude, Gemini, Mistral, and more
 - **Audio Generation**: Convert text to speech with 13 different voices and 5 audio formats
+- **Chat Model**: Use Pollinations models with n8n AI Agents, AI Chains, and AI workflows
 - **OpenAI-Compatible**: Chat completions endpoint compatible with OpenAI API format
 - **Vision Support**: Analyze and describe images using multimodal models
 
@@ -131,6 +132,27 @@ Convert text to speech with multiple voices and formats.
 **Voices Available**: Alloy, Echo, Fable, Onyx, Nova, Shimmer, Coral, Verse, Ballad, Ash, Sage, Amuch, Dan
 
 **Audio Formats**: WAV, MP3, FLAC, Opus, PCM16
+
+## Chat Model (AI Agent Support)
+
+Use Pollinations language models with n8n's AI Agent, AI Chain, and other AI workflow nodes.
+
+**How to Use**:
+
+1. Add the **Pollinations Chat Model** node to your workflow
+2. Select your preferred model (OpenAI, Claude, Gemini, Mistral, etc.)
+3. Configure options:
+   - **Temperature**: Controls randomness (0-2)
+   - **Max Tokens**: Maximum response length
+   - **Top P**: Nucleus sampling parameter
+4. Connect to AI Agent or AI Chain nodes
+
+**Benefits**:
+
+- Use any of 20+ Pollinations models in AI workflows
+- Seamless integration with n8n's AI ecosystem
+- Full langchain compatibility
+- Cost-effective alternative to direct API providers
 
 ## Usage Examples
 
