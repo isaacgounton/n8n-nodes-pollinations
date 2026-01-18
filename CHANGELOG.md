@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.4] - 2026-01-17
+
+### Fixed
+
+- **Chat Model Namespace**: Fixed `lc_namespace` to include 'chat_models' for proper n8n AI Agent detection
+  - Changed from `['pollinations']` to `['langchain', 'chat_models', 'pollinations']`
+  - Resolves `isChatInstance` validation check in n8n Tools Agent
+  - **This is the critical fix** that enables AI Agent recognition
+
+## [1.2.3] - 2026-01-17
+
+### Fixed
+
+- **Tool Calling Implementation**: Fixed `bindTools` method to properly store and use bound tools
+  - Changed from no-op method to actual tool binding implementation
+  - Tools are now correctly passed to API via both `bindTools()` and `invoke(options.tools)`
+  - Resolves persistent "Tools Agent requires Chat Model which supports Tools calling" error
+
+## [1.2.2] - 2026-01-17
+
+### Fixed
+
+- **AI Agent Tool Calling**: Added `supportsToolCalling` flag to properly indicate tool calling support to n8n AI Agent
+  - Resolves "Tools Agent requires Chat Model which supports Tools calling" error
+  - Chat model now properly reports its tool calling capability
+
 ## [1.2.1] - 2026-01-17
 
 ### Fixed

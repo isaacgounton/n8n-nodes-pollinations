@@ -26,9 +26,9 @@ class PollinationsChatModelInstance {
 	topP?: number;
 	baseURL: string;
 	apiKey: string;
-	lc_namespace = ['pollinations'];
-	// Tool calling support
-	bindTools?: (tools: Tool[]) => this;
+	lc_namespace = ['langchain', 'chat_models', 'pollinations'];
+	supportsToolCalling = true;
+	boundTools: Tool[] = [];
 
 	constructor(fields: {
 		modelName: string;
@@ -43,16 +43,31 @@ class PollinationsChatModelInstance {
 		this.topP = fields.topP;
 		this.baseURL = 'https://gen.pollinations.ai';
 		this.apiKey = fields.apiKey;
-		
-		// Enable tool calling support
-		this.bindTools = () => {
-			// Tools will be passed to the API call via invoke options
-			return this;
-		};
+	}
+	
+	// Langchain tool calling interface
+	bindTools(tools: Tool[]): this {
+		this.boundTools = tools;
+		return this;
 	}
 
 	_llmType(): string {
 		return 'pollinations';
+	}
+	
+	// Runnable interface methods
+	async batch(inputs: Array<Array<{ role: string; content: string }>>): Promise<Array<{ content: string; tool_calls?: unknown[] }>> {
+		return Promise.all(inputs.map(messages => this.invoke(messages)));
+	}
+	
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	pipe(_nextRunnable: unknown): unknown {
+		return _nextRunnable;
+	}
+	
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	withConfig(_config: unknown): this {
+		return this;
 	}
 
 	async invoke(
@@ -67,9 +82,10 @@ class PollinationsChatModelInstance {
 			...(this.topP !== undefined && { top_p: this.topP }),
 		};
 
-		// Add tools if provided
-		if (options?.tools && options.tools.length > 0) {
-			body.tools = options.tools;
+		// Use bound tools or options tools
+		const tools = options?.tools || this.boundTools;
+		if (tools && tools.length > 0) {
+			body.tools = tools;
 		}
 
 		const response = await fetch(`${this.baseURL}/v1/chat/completions`, {

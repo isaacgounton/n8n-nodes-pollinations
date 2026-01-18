@@ -89,6 +89,10 @@ export async function executeAudioGeneration(
 		model: 'openai-audio',
 		messages: [
 			{
+				role: 'system',
+				content: 'You are a text-to-speech system. Read the following text exactly as written, word for word, without adding any commentary, responses, or interpretations. Just speak the text verbatim.',
+			},
+			{
 				role: 'user',
 				content: text,
 			},
