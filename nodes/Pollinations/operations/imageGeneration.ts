@@ -16,7 +16,7 @@ export const imageGenerationOperation: INodeProperties[] = [
 		description: 'Text description of the image to generate',
 	},
 	{
-		displayName: 'Model',
+		displayName: 'Model Name or ID',
 		name: 'model',
 		type: 'options',
 		displayOptions: {
@@ -27,8 +27,8 @@ export const imageGenerationOperation: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getImageModels',
 		},
-		default: 'flux',
-		description: 'AI model to use for image generation',
+		default: '',
+		description: 'AI model to use for image generation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Width',

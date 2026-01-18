@@ -8,17 +8,38 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
 
-// Tool interface for OpenAI-compatible function calling
-interface Tool {
-	type: string;
-	function: {
-		name: string;
-		description?: string;
-		parameters?: Record<string, unknown>;
-	};
+// Simple AIMessage implementation for compatibility
+class AIMessage {
+	content: string;
+	tool_calls?: unknown[];
+	additional_kwargs: Record<string, unknown> = {};
+
+	constructor(content: string, tool_calls?: unknown[]) {
+		this.content = content;
+		this.tool_calls = tool_calls || [];
+		if (tool_calls && tool_calls.length > 0) {
+			this.additional_kwargs.tool_calls = tool_calls;
+		}
+	}
+
+	_getType(): string {
+		return 'ai';
+	}
 }
 
-// Minimal langchain-compatible chat model wrapper for Pollinations
+// ChatResult and ChatGeneration interfaces for LangChain compatibility
+interface ChatGeneration {
+	message: AIMessage;
+	text: string;
+	generationInfo?: Record<string, unknown>;
+}
+
+interface ChatResult {
+	generations: ChatGeneration[];
+	llmOutput?: Record<string, unknown>;
+}
+
+// LangChain-compatible Runnable chat model for Pollinations
 class PollinationsChatModelInstance {
 	modelName: string;
 	temperature: number;
@@ -26,10 +47,11 @@ class PollinationsChatModelInstance {
 	topP?: number;
 	baseURL: string;
 	apiKey: string;
+
+	// LangChain Runnable interface properties
 	lc_namespace = ['langchain', 'chat_models', 'pollinations'];
 	lc_serializable = true;
-	supportsToolCalling = true;
-	boundTools: Tool[] = [];
+	lc_runnable = true;
 
 	constructor(fields: {
 		modelName: string;
@@ -45,39 +67,127 @@ class PollinationsChatModelInstance {
 		this.baseURL = 'https://gen.pollinations.ai';
 		this.apiKey = fields.apiKey;
 	}
-	
-	// Langchain tool calling interface
-	bindTools(tools: Tool[]): this {
-		const newInstance = new PollinationsChatModelInstance({
-			modelName: this.modelName,
-			temperature: this.temperature,
-			maxTokens: this.maxTokens,
-			topP: this.topP,
-			apiKey: this.apiKey,
-		});
-		newInstance.boundTools = tools;
-		return newInstance as this;
-	}
 
 	_llmType(): string {
 		return 'pollinations';
 	}
-	
+
 	getName(): string {
 		return 'PollinationsChatModel';
 	}
-	
-	// Runnable interface methods
-	async batch(inputs: Array<Array<{ role: string; content: string }>>): Promise<Array<{ content: string; tool_calls?: unknown[] }>> {
-		return Promise.all(inputs.map(messages => this.invoke(messages)));
+
+	// Convert LangChain messages to simple format
+	private convertMessages(messages: unknown[]): Array<{ role: string; content: string }> {
+		return messages.map(message => {
+			const msg = message as Record<string, unknown>;
+
+			// Handle LangChain message objects
+			if ('_getType' in msg && typeof msg._getType === 'function') {
+				const msgType = msg._getType();
+				if (msgType === 'human') {
+					return { role: 'user', content: String(msg.content || '') };
+				} else if (msgType === 'ai') {
+					return { role: 'assistant', content: String(msg.content || '') };
+				} else if (msgType === 'system') {
+					return { role: 'system', content: String(msg.content || '') };
+				}
+			}
+
+			// Handle plain objects with role/content
+			if (typeof msg === 'object' && msg !== null && 'role' in msg && 'content' in msg) {
+				return {
+					role: String(msg.role || 'user'),
+					content: String(msg.content || '')
+				};
+			}
+
+			// Handle objects with different field names
+			if (typeof msg === 'object' && msg !== null) {
+				const content = msg.content || msg.text || msg.message || msg.prompt;
+				const role = msg.role || msg.type || 'user';
+				if (content) {
+					return {
+						role: String(role),
+						content: String(content)
+					};
+				}
+			}
+
+			// Fallback: treat as user message
+			return { role: 'user', content: String(message) };
+		});
 	}
-	
+
+	// Runnable interface methods
+	async invoke(input: unknown): Promise<AIMessage> {
+		let messages: Array<{ role: string; content: string }>;
+
+		if (Array.isArray(input)) {
+			messages = this.convertMessages(input);
+		} else if (typeof input === 'string') {
+			messages = [{ role: 'user', content: input }];
+		} else if (input && typeof input === 'object') {
+			// Handle single message object or other object formats
+			const inputObj = input as Record<string, unknown>;
+			if ('content' in inputObj) {
+				// Single message object
+				messages = this.convertMessages([input]);
+			} else if ('messages' in inputObj && Array.isArray(inputObj.messages)) {
+				// Object with messages array
+				messages = this.convertMessages(inputObj.messages);
+			} else if ('input' in inputObj) {
+				// Object with input field
+				messages = [{ role: 'user', content: String(inputObj.input) }];
+			} else {
+				// Try to extract text from object
+				const textContent = inputObj.text || inputObj.message || inputObj.prompt || String(input);
+				messages = [{ role: 'user', content: String(textContent) }];
+			}
+		} else {
+			// Fallback: convert to string
+			messages = [{ role: 'user', content: String(input) }];
+		}
+
+		const result = await this._callAPI(messages);
+		return new AIMessage(result.content, result.tool_calls);
+	}
+
+	// LangChain BaseChatModel _generate method for compatibility
+	async _generate(messages: unknown[]): Promise<ChatResult> {
+		const convertedMessages = this.convertMessages(messages);
+		const result = await this._callAPI(convertedMessages);
+		const aiMessage = new AIMessage(result.content, result.tool_calls);
+
+		const generation: ChatGeneration = {
+			message: aiMessage,
+			text: result.content,
+			generationInfo: {
+				finish_reason: 'stop',
+				...(result.tool_calls && result.tool_calls.length > 0 && { tool_calls: result.tool_calls }),
+			},
+		};
+
+		return {
+			generations: [generation],
+			llmOutput: {
+				tokenUsage: {
+					promptTokens: 0,
+					completionTokens: 0,
+					totalTokens: 0,
+				},
+			},
+		};
+	}
+
+	async batch(inputs: unknown[]): Promise<AIMessage[]> {
+		return Promise.all(inputs.map(input => this.invoke(input)));
+	}
+
 	pipe(nextRunnable: unknown): unknown {
-		// Proper pipe implementation for LangChain
 		const pipeFunction = async (input: unknown) => {
-			const output = await this.invoke(input as Array<{ role: string; content: string }>);
+			const output = await this.invoke(input);
 			if (typeof nextRunnable === 'function') {
-				return await (nextRunnable as (input: unknown) => Promise<unknown>)(output);
+				return await nextRunnable(output);
 			}
 			if (nextRunnable && typeof nextRunnable === 'object' && 'invoke' in nextRunnable) {
 				return await (nextRunnable as { invoke: (input: unknown) => Promise<unknown> }).invoke(output);
@@ -86,9 +196,8 @@ class PollinationsChatModelInstance {
 		};
 		return pipeFunction;
 	}
-	
+
 	withConfig(config: Record<string, unknown>): this {
-		// Create new instance with updated config
 		const newInstance = new PollinationsChatModelInstance({
 			modelName: this.modelName,
 			temperature: config.temperature as number ?? this.temperature,
@@ -96,14 +205,24 @@ class PollinationsChatModelInstance {
 			topP: config.topP as number ?? this.topP,
 			apiKey: this.apiKey,
 		});
-		newInstance.boundTools = this.boundTools;
 		return newInstance as this;
 	}
 
-	async invoke(
-		messages: Array<{ role: string; content: string }>,
-		options?: { tools?: Tool[] },
-	): Promise<{ content: string; tool_calls?: unknown[] }> {
+	// Tool calling support
+	bindTools(tools: unknown[]): this {
+		const newInstance = new PollinationsChatModelInstance({
+			modelName: this.modelName,
+			temperature: this.temperature,
+			maxTokens: this.maxTokens,
+			topP: this.topP,
+			apiKey: this.apiKey,
+		});
+		(newInstance as PollinationsChatModelInstance & { boundTools: unknown[] }).boundTools = tools;
+		return newInstance as this;
+	}
+
+	// Internal API call method
+	private async _callAPI(messages: Array<{ role: string; content: string }>): Promise<{ content: string; tool_calls?: unknown[] }> {
 		const body: Record<string, unknown> = {
 			model: this.modelName,
 			messages,
@@ -112,10 +231,10 @@ class PollinationsChatModelInstance {
 			...(this.topP !== undefined && { top_p: this.topP }),
 		};
 
-		// Use bound tools or options tools
-		const tools = options?.tools || this.boundTools;
-		if (tools && tools.length > 0) {
-			body.tools = tools;
+		// Add tools if available
+		const boundTools = (this as PollinationsChatModelInstance & { boundTools?: unknown[] }).boundTools;
+		if (boundTools && Array.isArray(boundTools) && boundTools.length > 0) {
+			body.tools = boundTools;
 		}
 
 		const response = await fetch(`${this.baseURL}/v1/chat/completions`, {
@@ -135,31 +254,12 @@ class PollinationsChatModelInstance {
 		const data = (await response.json()) as {
 			choices?: Array<{ message?: { content?: string; tool_calls?: unknown[] } }>;
 		};
-		
+
 		const message = data.choices?.[0]?.message;
 		return {
 			content: message?.content || '',
-			...(message?.tool_calls && { tool_calls: message.tool_calls }),
+			tool_calls: message?.tool_calls || [],
 		};
-	}
-
-	async _generate(
-		messages: Array<Array<{ role: string; content: string }>>,
-	): Promise<{
-		generations: Array<Array<{ text: string; message: { content: string } }>>;
-	}> {
-		const generations = await Promise.all(
-			messages.map(async (messageSet) => {
-				const result = await this.invoke(messageSet);
-				return [{ text: result.content, message: result }];
-			}),
-		);
-		return { generations };
-	}
-
-	async call(input: string): Promise<string> {
-		const result = await this.invoke([{ role: 'user', content: input }]);
-		return result.content;
 	}
 }
 

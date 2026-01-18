@@ -43,7 +43,7 @@ export const textGenerationOperation: INodeProperties[] = [
 	},
 	// Chat completion
 	{
-		displayName: 'Model',
+		displayName: 'Model Name or ID',
 		name: 'textModel',
 		type: 'options',
 		displayOptions: {
@@ -55,8 +55,8 @@ export const textGenerationOperation: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getTextModels',
 		},
-		default: 'openai',
-		description: 'AI model to use for text generation',
+		default: '',
+		description: 'AI model to use for text generation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Messages',

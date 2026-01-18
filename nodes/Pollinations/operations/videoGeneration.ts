@@ -16,7 +16,7 @@ export const videoGenerationOperation: INodeProperties[] = [
 		description: 'Text description of the video to generate',
 	},
 	{
-		displayName: 'Model',
+		displayName: 'Model Name or ID',
 		name: 'videoModel',
 		type: 'options',
 		displayOptions: {
@@ -27,8 +27,8 @@ export const videoGenerationOperation: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getVideoModels',
 		},
-		default: 'veo',
-		description: 'AI model to use for video generation',
+		default: '',
+		description: 'AI model to use for video generation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Width',
