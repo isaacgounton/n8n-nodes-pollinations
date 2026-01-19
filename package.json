@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-pollinations-v2",
-	"version": "1.2.22",
+	"version": "1.2.23",
 	"description": "n8n community node for Pollinations.ai - Generate images, videos, text, and audio using AI",
 	"license": "MIT",
 	"homepage": "https://github.com/isaacgounton/n8n-nodes-pollinations",
@@ -50,7 +50,11 @@
 		],
 		"nodes": [
 			"dist/nodes/Pollinations/Pollinations.node.js",
-			"dist/nodes/PollinationsChatModel/PollinationsChatModel.node.js"
+			"dist/nodes/PollinationsChatModel/PollinationsChatModel.node.js",
+			"dist/nodes/tools/ToolPollinationsImage/ToolPollinationsImage.node.js",
+			"dist/nodes/tools/ToolPollinationsVideo/ToolPollinationsVideo.node.js",
+			"dist/nodes/tools/ToolPollinationsText/ToolPollinationsText.node.js",
+			"dist/nodes/tools/ToolPollinationsAudio/ToolPollinationsAudio.node.js"
 		]
 	},
 	"devDependencies": {
@@ -69,5 +73,9 @@
 	},
 	"peerDependencies": {
 		"n8n-workflow": "*"
+	},
+	"dependencies": {
+		"@langchain/core": "^1.1.15",
+		"zod": "^4.3.5"
 	}
 }

@@ -271,7 +271,6 @@ export class PollinationsChatModel implements INodeType {
 		defaults: {
 			name: 'Pollinations Chat Model',
 		},
-		usableAsTool: true,
 		codex: {
 			categories: ['AI'],
 			subcategories: {
@@ -288,6 +287,7 @@ export class PollinationsChatModel implements INodeType {
 		inputs: [],
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'pollinationsApi',
