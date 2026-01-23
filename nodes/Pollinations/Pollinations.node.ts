@@ -12,6 +12,9 @@ import { videoGenerationOperation, executeVideoGeneration } from './operations/v
 import { textGenerationOperation, executeTextGeneration } from './operations/textGeneration';
 import { audioGenerationOperation, executeAudioGeneration } from './operations/audioGeneration';
 import { audioTranscriptionOperation, executeAudioTranscription } from './operations/audioTranscription';
+import { imageAnalysisOperation, executeImageAnalysis } from './operations/imageAnalysis';
+import { videoAnalysisOperation, executeVideoAnalysis } from './operations/videoAnalysis';
+import { imageToImageOperation, executeImageToImage } from './operations/imageToImage';
 
 export class Pollinations implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,10 +39,44 @@ export class Pollinations implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Audio',
+						value: 'audio',
+						description: 'Audio generation and transcription',
+					},
+					{
+						name: 'Image',
+						value: 'image',
+						description: 'Image generation, analysis, and editing',
+					},
+					{
+						name: 'Text',
+						value: 'text',
+						description: 'Text generation with AI language models',
+					},
+					{
+						name: 'Video',
+						value: 'video',
+						description: 'Video generation and analysis',
+					},
+				],
+				default: 'image',
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['audio'],
+					},
+				},
 				options: [
 					{
 						name: 'Audio Generation',
@@ -53,6 +90,20 @@ export class Pollinations implements INodeType {
 						description: 'Transcribe audio to text',
 						action: 'Transcribe audio',
 					},
+				],
+				default: 'audioGeneration',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['image'],
+					},
+				},
+				options: [
 					{
 						name: 'Image Generation',
 						value: 'imageGeneration',
@@ -60,25 +111,74 @@ export class Pollinations implements INodeType {
 						action: 'Generate an image',
 					},
 					{
+						name: 'Image Analysis',
+						value: 'imageAnalysis',
+						description: 'Analyze images with AI vision',
+						action: 'Analyze image',
+					},
+					{
+						name: 'Image to Image',
+						value: 'imageToImage',
+						description: 'Edit or transform images with AI',
+						action: 'Transform image',
+					},
+				],
+				default: 'imageGeneration',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['text'],
+					},
+				},
+				options: [
+					{
 						name: 'Text Generation',
 						value: 'textGeneration',
 						description: 'Generate text using AI language models',
 						action: 'Generate text',
 					},
+				],
+				default: 'textGeneration',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['video'],
+					},
+				},
+				options: [
 					{
 						name: 'Video Generation',
 						value: 'videoGeneration',
 						description: 'Generate videos from text or images',
 						action: 'Generate a video',
 					},
+					{
+						name: 'Video Analysis',
+						value: 'videoAnalysis',
+						description: 'Analyze videos with AI',
+						action: 'Analyze video',
+					},
 				],
-				default: 'imageGeneration',
+				default: 'videoGeneration',
 			},
 			...imageGenerationOperation,
 			...videoGenerationOperation,
 			...textGenerationOperation,
 			...audioGenerationOperation,
 			...audioTranscriptionOperation,
+			...imageAnalysisOperation,
+			...videoAnalysisOperation,
+			...imageToImageOperation,
 		],
 	};
 
@@ -141,6 +241,60 @@ export class Pollinations implements INodeType {
 				return [];
 			}
 		},
+		async getVisionModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			try {
+				const models = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: 'https://gen.pollinations.ai/text/models',
+				})) as Array<{ name: string; input_modalities: string[] }>;
+
+				return models
+					.filter((m) => m.input_modalities?.includes('image'))
+					.map((m) => ({
+						name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
+						value: m.name,
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name));
+			} catch {
+				return [];
+			}
+		},
+		async getImageToImageModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			try {
+				const models = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: 'https://gen.pollinations.ai/image/models',
+				})) as Array<{ name: string; input_modalities: string[]; output_modalities: string[] }>;
+
+				return models
+					.filter((m) => m.input_modalities?.includes('image') && m.output_modalities?.includes('image'))
+					.map((m) => ({
+						name: m.name.charAt(0).toUpperCase() + m.name.slice(1),
+						value: m.name,
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name));
+			} catch {
+				return [];
+			}
+		},
+		async getVideoAnalysisModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			try {
+				const models = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: 'https://gen.pollinations.ai/text/models',
+				})) as Array<{ name: string; input_modalities: string[] }>;
+
+				return models
+					.filter((m) => m.input_modalities?.includes('video'))
+					.map((m) => ({
+						name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
+						value: m.name,
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name));
+			} catch {
+				return [];
+			}
+		},
 		},
 	};
 
@@ -169,6 +323,15 @@ export class Pollinations implements INodeType {
 						break;
 					case 'audioTranscription':
 						result = await executeAudioTranscription.call(this, itemIndex);
+						break;
+					case 'imageAnalysis':
+						result = await executeImageAnalysis.call(this, itemIndex);
+						break;
+					case 'videoAnalysis':
+						result = await executeVideoAnalysis.call(this, itemIndex);
+						break;
+					case 'imageToImage':
+						result = await executeImageToImage.call(this, itemIndex);
 						break;
 					default:
 						throw new NodeOperationError(

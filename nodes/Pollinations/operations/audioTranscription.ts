@@ -8,6 +8,7 @@ export const audioTranscriptionOperation: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
+				resource: ['audio'],
 				operation: ['audioTranscription'],
 			},
 		},
@@ -20,6 +21,7 @@ export const audioTranscriptionOperation: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
+				resource: ['audio'],
 				operation: ['audioTranscription'],
 			},
 		},
@@ -35,6 +37,7 @@ export const audioTranscriptionOperation: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
+				resource: ['audio'],
 				operation: ['audioTranscription'],
 			},
 		},
@@ -97,7 +100,7 @@ export async function executeAudioTranscription(
 		}
 	} else {
 		// Assume it's a Buffer
-		audioBase64 = Buffer.from(audioData as any).toString('base64');
+		audioBase64 = Buffer.from(audioData as Buffer).toString('base64');
 	}
 
 	// Determine audio format from mimeType

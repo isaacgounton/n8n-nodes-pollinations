@@ -7,12 +7,15 @@ This is an n8n community node for [Pollinations.ai](https://pollinations.ai) - a
 ## Features
 
 - **Image Generation**: Create images using multiple AI models (Flux, Turbo, GPT Image, Kontext, and more)
+- **Image Analysis**: Analyze and describe images using AI vision models
+- **Image to Image**: Edit and transform images with AI
 - **Video Generation**: Generate videos from text or images (Veo, Seedance models)
-- **Text Generation**: Use 20+ language models including OpenAI, Claude, Gemini, Mistral, and more
+- **Video Analysis**: Analyze video content with AI
+- **Text Generation**: Use 25+ language models including OpenAI, Claude, Gemini, Mistral, and more
 - **Audio Generation**: Convert text to speech with 13 different voices and 5 audio formats
-- **Chat Model**: Use Pollinations models with n8n AI Agents, AI Chains, and AI workflows
+- **Audio Transcription**: Transcribe audio files to text using AI
+- **Chat Model**: Use Pollinations models with n8m AI Agents, AI Chains, and AI workflows
 - **OpenAI-Compatible**: Chat completions endpoint compatible with OpenAI API format
-- **Vision Support**: Analyze and describe images using multimodal models
 
 ## Installation
 
@@ -132,6 +135,68 @@ Convert text to speech with multiple voices and formats.
 **Voices Available**: Alloy, Echo, Fable, Onyx, Nova, Shimmer, Coral, Verse, Ballad, Ash, Sage, Amuch, Dan
 
 **Audio Formats**: WAV, MP3, FLAC, Opus, PCM16
+
+**Parameters**:
+
+- Text (required)
+- Voice selection
+- Audio format
+- **Advanced Options**:
+  - Model selection (default: openai-audio)
+
+### Audio Transcription
+
+Transcribe audio files to text using AI models with audio input capability.
+
+**Models Available**: Gemini, Gemini Large, Gemini Legacy, OpenAI Audio
+
+**Supported Formats**: MP3, WAV, FLAC, OGG, and more
+
+**Parameters**:
+
+- Binary Property (default: 'data') - Name of binary property containing audio
+- Prompt (optional) - Instructions for transcription
+- Model selection
+
+### Image Analysis
+
+Analyze and describe images using AI vision models.
+
+**Models Available**: All vision-capable models (Gemini, Claude, OpenAI, etc.)
+
+**Parameters**:
+
+- Input Image (required) - Image file to analyze
+- Prompt - What you want to know about the image
+- Model selection
+
+### Image to Image
+
+Edit and transform images with AI-powered image-to-image generation.
+
+**Models Available**: Kontext, and other models supporting image input/output
+
+**Parameters**:
+
+- Input Image (required) - Source image to edit
+- Prompt (required) - Instructions for how to edit the image
+- Model selection
+- Negative Prompt - What to avoid in the generated image
+- Seed - For reproducible results
+
+### Video Analysis
+
+Analyze video content and extract insights using AI models with video understanding.
+
+**Models Available**: All video-capable models (Gemini, Claude, OpenAI, etc.)
+
+**Supported Formats**: MP4, MOV, AVI, and more
+
+**Parameters**:
+
+- Video Input (required) - Video file to analyze
+- Prompt - What you want to know about the video
+- Model selection
 
 ## Chat Model (AI Agent Support)
 

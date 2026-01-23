@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.30] - 2026-01-22
+
+### Added
+
+- **Audio Transcription**: Transcribe audio files to text using AI models with audio input capability
+  - Supports multiple formats (MP3, WAV, FLAC, OGG, etc.)
+  - Models: Gemini, Gemini Large, Gemini Legacy, OpenAI Audio
+  - Binary property input for audio files
+- **Image Analysis**: Analyze and describe images using AI vision models
+  - Supports all vision-capable models (Gemini, Claude, OpenAI, etc.)
+  - Uses image_url format for vision API
+- **Image to Image**: Edit and transform images with AI-powered image-to-image generation
+  - Supports Kontext and other models with image input/output
+  - Negative prompt and seed options
+- **Video Analysis**: Analyze video content using AI models with video understanding
+  - Supports multiple video formats (MP4, MOV, AVI, etc.)
+  - Uses input_video format for video analysis
+- **Resource Pattern**: Reorganized node to use resource-based operation structure
+  - Two-level selection: Resource (Audio, Image, Text, Video) → Operation
+  - Improved UX for better operation discoverability
+
+### Changed
+
+- **Audio Generation**: Fixed TTS to read text verbatim instead of AI responding to text
+  - Now uses "Say: {text}" prefix with system prompt for accurate text-to-speech
+  - Fixed modalities from `['audio']` to `['text', 'audio']`
+
 ## [1.2.4] - 2026-01-17
 
 ### Fixed

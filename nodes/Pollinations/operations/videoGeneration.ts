@@ -10,6 +10,7 @@ export const videoGenerationOperation: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
+				resource: ['video'],
 				operation: ['videoGeneration'],
 			},
 		},
@@ -21,6 +22,7 @@ export const videoGenerationOperation: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
+				resource: ['video'],
 				operation: ['videoGeneration'],
 			},
 		},
@@ -36,6 +38,7 @@ export const videoGenerationOperation: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
+				resource: ['video'],
 				operation: ['videoGeneration'],
 			},
 		},
@@ -52,6 +55,7 @@ export const videoGenerationOperation: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
+				resource: ['video'],
 				operation: ['videoGeneration'],
 			},
 		},
@@ -70,6 +74,7 @@ export const videoGenerationOperation: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
+				resource: ['video'],
 				operation: ['videoGeneration'],
 			},
 		},

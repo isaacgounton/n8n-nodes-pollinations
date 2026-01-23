@@ -10,6 +10,7 @@ export const imageGenerationOperation: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
+				resource: ['image'],
 				operation: ['imageGeneration'],
 			},
 		},
@@ -21,6 +22,7 @@ export const imageGenerationOperation: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
+				resource: ['image'],
 				operation: ['imageGeneration'],
 			},
 		},
@@ -36,6 +38,7 @@ export const imageGenerationOperation: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
+				resource: ['image'],
 				operation: ['imageGeneration'],
 			},
 		},
@@ -52,6 +55,7 @@ export const imageGenerationOperation: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
+				resource: ['image'],
 				operation: ['imageGeneration'],
 			},
 		},
@@ -70,6 +74,7 @@ export const imageGenerationOperation: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
+				resource: ['image'],
 				operation: ['imageGeneration'],
 			},
 		},

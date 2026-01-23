@@ -8,6 +8,7 @@ export const textGenerationOperation: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
+				resource: ['text'],
 				operation: ['textGeneration'],
 			},
 		},

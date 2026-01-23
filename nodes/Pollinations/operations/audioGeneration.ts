@@ -10,6 +10,7 @@ export const audioGenerationOperation: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
+				resource: ['audio'],
 				operation: ['audioGeneration'],
 			},
 		},
@@ -24,6 +25,7 @@ export const audioGenerationOperation: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
+				resource: ['audio'],
 				operation: ['audioGeneration'],
 			},
 		},
@@ -51,6 +53,7 @@ export const audioGenerationOperation: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
+				resource: ['audio'],
 				operation: ['audioGeneration'],
 			},
 		},
