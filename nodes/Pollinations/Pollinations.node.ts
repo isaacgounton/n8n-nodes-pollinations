@@ -42,24 +42,6 @@ export class Pollinations implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Image Generation',
-						value: 'imageGeneration',
-						description: 'Generate images from text prompts',
-						action: 'Generate an image',
-					},
-					{
-						name: 'Video Generation',
-						value: 'videoGeneration',
-						description: 'Generate videos from text or images',
-						action: 'Generate a video',
-					},
-					{
-						name: 'Text Generation',
-						value: 'textGeneration',
-						description: 'Generate text using AI language models',
-						action: 'Generate text',
-					},
-					{
 						name: 'Audio Generation',
 						value: 'audioGeneration',
 						description: 'Generate audio/speech from text',
@@ -70,6 +52,24 @@ export class Pollinations implements INodeType {
 						value: 'audioTranscription',
 						description: 'Transcribe audio to text',
 						action: 'Transcribe audio',
+					},
+					{
+						name: 'Image Generation',
+						value: 'imageGeneration',
+						description: 'Generate images from text prompts',
+						action: 'Generate an image',
+					},
+					{
+						name: 'Text Generation',
+						value: 'textGeneration',
+						description: 'Generate text using AI language models',
+						action: 'Generate text',
+					},
+					{
+						name: 'Video Generation',
+						value: 'videoGeneration',
+						description: 'Generate videos from text or images',
+						action: 'Generate a video',
 					},
 				],
 				default: 'imageGeneration',
