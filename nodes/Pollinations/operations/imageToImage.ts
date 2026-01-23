@@ -3,6 +3,29 @@ import { NodeOperationError } from 'n8n-workflow';
 
 export const imageToImageOperation: INodeProperties[] = [
 	{
+		displayName: 'Input Source',
+		name: 'inputSource',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['image'],
+				operation: ['imageToImage'],
+			},
+		},
+		options: [
+			{
+				name: 'Binary Property',
+				value: 'binary',
+			},
+			{
+				name: 'Image URL',
+				value: 'url',
+			},
+		],
+		default: 'url',
+		description: 'How to provide the source image (URL is more reliable)',
+	},
+	{
 		displayName: 'Binary Property',
 		name: 'binaryProperty',
 		type: 'string',
@@ -10,10 +33,26 @@ export const imageToImageOperation: INodeProperties[] = [
 			show: {
 				resource: ['image'],
 				operation: ['imageToImage'],
+				inputSource: ['binary'],
 			},
 		},
 		default: 'data',
-		description: 'Name of the binary property containing the source image',
+		description: 'Name of the binary property containing the source image (may fail for large images)',
+	},
+	{
+		displayName: 'Image URL',
+		name: 'imageUrl',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['image'],
+				operation: ['imageToImage'],
+				inputSource: ['url'],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'URL of the source image (recommended - use HTTP/HTTPS URL)',
 	},
 	{
 		displayName: 'Prompt',
@@ -83,26 +122,14 @@ export async function executeImageToImage(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex) as string;
+	const inputSource = this.getNodeParameter('inputSource', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const model = this.getNodeParameter('model', itemIndex) as string;
 	const negative_prompt = this.getNodeParameter('negative_prompt', itemIndex) as string;
 	const seed = this.getNodeParameter('seed', itemIndex) as number;
 
-	// Get binary data from input
-	const inputData = this.getInputData();
-	const binaryData = inputData[itemIndex].binary?.[binaryProperty];
-
-	if (!binaryData) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`No binary data found in property "${binaryProperty}"`,
-			{ itemIndex },
-		);
-	}
-
 	// Get credentials
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+	const headers: Record<string, string> = {};
 	try {
 		const credentials = await this.getCredentials('pollinationsApi');
 		if (credentials?.apiKey) {
@@ -116,42 +143,64 @@ export async function executeImageToImage(
 		);
 	}
 
-	// Convert binary data to base64
-	let imageBase64: string;
-	if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
-		imageBase64 = binaryData.data.split(',')[1];
-	} else if (typeof binaryData.data === 'string') {
-		imageBase64 = binaryData.data;
+	// Get image URL based on input source
+	let imageUrl: string;
+	let inputMimeType = 'image/jpeg';
+
+	if (inputSource === 'url') {
+		imageUrl = this.getNodeParameter('imageUrl', itemIndex) as string;
+		if (!imageUrl) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Image URL is required when using URL input source',
+				{ itemIndex },
+			);
+		}
 	} else {
-		imageBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
+		// Binary upload - convert to base64 data URL
+		const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex) as string;
+		const inputData = this.getInputData();
+		const binaryData = inputData[itemIndex].binary?.[binaryProperty];
+
+		if (!binaryData) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`No binary data found in property "${binaryProperty}"`,
+				{ itemIndex },
+			);
+		}
+
+		// Convert binary data to base64
+		let imageBase64: string;
+		if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
+			imageBase64 = binaryData.data.split(',')[1];
+		} else if (typeof binaryData.data === 'string') {
+			imageBase64 = binaryData.data;
+		} else {
+			imageBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
+		}
+
+		inputMimeType = binaryData.mimeType || 'image/jpeg';
+		imageUrl = `data:${inputMimeType};base64,${imageBase64}`;
 	}
 
-	const mimeType = binaryData.mimeType || 'image/jpeg';
-	const imageUrl = `data:${mimeType};base64,${imageBase64}`;
-
-	// Build query parameters for GET request (small params only)
+	// Build query parameters
 	const queryParams = new URLSearchParams({
 		model,
-		// Don't include prompt and image in query params - use POST body instead
+		image: imageUrl,
 	});
+
 	if (negative_prompt) queryParams.set('negative_prompt', negative_prompt);
 	if (seed !== undefined && seed !== -1) queryParams.set('seed', seed.toString());
 
-	// Use POST to avoid URL length limit with base64 image
+	// Build URL - using GET endpoint
 	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${queryParams.toString()}`;
 
 	try {
 		const response = await this.helpers.httpRequest({
-			method: 'POST',
+			method: 'GET',
 			url,
-			headers: {
-				...headers,
-				'Content-Type': 'application/json',
-			},
-			body: {
-				image: imageUrl,
-			},
-			json: true,
+			headers,
 			encoding: 'arraybuffer',
 			returnFullResponse: true,
 		});
@@ -174,7 +223,8 @@ export async function executeImageToImage(
 				model,
 				negative_prompt,
 				seed,
-				inputImageMimeType: mimeType,
+				inputSource,
+				inputImageMimeType: inputMimeType,
 			},
 			binary: {
 				data: binaryDataOutput,
