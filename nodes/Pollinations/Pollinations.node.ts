@@ -11,6 +11,7 @@ import { imageGenerationOperation, executeImageGeneration } from './operations/i
 import { videoGenerationOperation, executeVideoGeneration } from './operations/videoGeneration';
 import { textGenerationOperation, executeTextGeneration } from './operations/textGeneration';
 import { audioGenerationOperation, executeAudioGeneration } from './operations/audioGeneration';
+import { audioTranscriptionOperation, executeAudioTranscription } from './operations/audioTranscription';
 
 export class Pollinations implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,6 +65,12 @@ export class Pollinations implements INodeType {
 						description: 'Generate audio/speech from text',
 						action: 'Generate audio',
 					},
+					{
+						name: 'Audio Transcription',
+						value: 'audioTranscription',
+						description: 'Transcribe audio to text',
+						action: 'Transcribe audio',
+					},
 				],
 				default: 'imageGeneration',
 			},
@@ -71,6 +78,7 @@ export class Pollinations implements INodeType {
 			...videoGenerationOperation,
 			...textGenerationOperation,
 			...audioGenerationOperation,
+			...audioTranscriptionOperation,
 		],
 	};
 
@@ -158,6 +166,9 @@ export class Pollinations implements INodeType {
 						break;
 					case 'audioGeneration':
 						result = await executeAudioGeneration.call(this, itemIndex);
+						break;
+					case 'audioTranscription':
+						result = await executeAudioTranscription.call(this, itemIndex);
 						break;
 					default:
 						throw new NodeOperationError(
