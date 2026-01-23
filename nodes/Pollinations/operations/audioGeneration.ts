@@ -127,10 +127,20 @@ export async function executeAudioGeneration(
 
 		const audioBuffer = Buffer.from(audioData, 'base64');
 
+		// Map format to correct MIME type
+		const mimeTypeMap: Record<string, string> = {
+			mp3: 'audio/mpeg',
+			wav: 'audio/wav',
+			flac: 'audio/flac',
+			opus: 'audio/opus',
+			pcm16: 'audio/l16',
+		};
+		const mimeType = mimeTypeMap[format] || `audio/${format}`;
+
 		const binaryData = await this.helpers.prepareBinaryData(
 			audioBuffer,
 			`audio_${itemIndex}.${format}`,
-			`audio/${format}`,
+			mimeType,
 		);
 
 		return {

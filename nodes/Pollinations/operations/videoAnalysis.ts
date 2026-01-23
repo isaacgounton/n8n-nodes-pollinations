@@ -3,27 +3,17 @@ import { NodeOperationError } from 'n8n-workflow';
 
 export const videoAnalysisOperation: INodeProperties[] = [
 	{
-		displayName: 'Video Input',
-		name: 'videoInput',
-		type: 'resourceMapper',
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: ['video'],
 				operation: ['videoAnalysis'],
 			},
 		},
-		default: {
-			mode: 'list',
-			value: null,
-		},
-		required: true,
-		description: 'Video file to analyze (MP4, MOV, AVI, etc.)',
-		typeOptions: {
-			resourceMapper: {
-				resourceMapperMethod: 'getVideoInput',
-				mode: 'map',
-			},
-		},
+		default: 'data',
+		description: 'Name of the binary property containing the video file',
 	},
 	{
 		displayName: 'Prompt',
@@ -63,9 +53,21 @@ export async function executeVideoAnalysis(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const videoInput = this.getNodeParameter('videoInput', itemIndex) as { data: string; mimeType: string };
+	const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const model = this.getNodeParameter('model', itemIndex) as string;
+
+	// Get binary data from input
+	const inputData = this.getInputData();
+	const binaryData = inputData[itemIndex].binary?.[binaryProperty];
+
+	if (!binaryData) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`No binary data found in property "${binaryProperty}"`,
+			{ itemIndex },
+		);
+	}
 
 	// Get credentials
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -84,16 +86,15 @@ export async function executeVideoAnalysis(
 
 	// Convert binary data to base64
 	let videoBase64: string;
-	if (typeof videoInput.data === 'string' && videoInput.data.startsWith('data:')) {
-		videoBase64 = videoInput.data.split(',')[1];
-	} else if (typeof videoInput.data === 'string') {
-		videoBase64 = videoInput.data;
+	if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
+		videoBase64 = binaryData.data.split(',')[1];
+	} else if (typeof binaryData.data === 'string') {
+		videoBase64 = binaryData.data;
 	} else {
-		videoBase64 = Buffer.from(videoInput.data as Buffer).toString('base64');
+		videoBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
 	}
 
-	// Determine MIME type
-	const mimeType = videoInput.mimeType || 'video/mp4';
+	const mimeType = binaryData.mimeType || 'video/mp4';
 
 	// Build request body with input_video format
 	const body = {

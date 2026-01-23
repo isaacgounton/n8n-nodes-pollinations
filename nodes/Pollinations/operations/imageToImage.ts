@@ -3,27 +3,17 @@ import { NodeOperationError } from 'n8n-workflow';
 
 export const imageToImageOperation: INodeProperties[] = [
 	{
-		displayName: 'Input Image',
-		name: 'inputImage',
-		type: 'resourceMapper',
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: ['image'],
 				operation: ['imageToImage'],
 			},
 		},
-		default: {
-			mode: 'list',
-			value: null,
-		},
-		required: true,
-		description: 'Source image to edit or transform',
-		typeOptions: {
-			resourceMapper: {
-				resourceMapperMethod: 'getInputImage',
-				mode: 'map',
-			},
-		},
+		default: 'data',
+		description: 'Name of the binary property containing the source image',
 	},
 	{
 		displayName: 'Prompt',
@@ -93,11 +83,23 @@ export async function executeImageToImage(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const inputImage = this.getNodeParameter('inputImage', itemIndex) as { data: string; mimeType: string };
+	const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const model = this.getNodeParameter('model', itemIndex) as string;
 	const negative_prompt = this.getNodeParameter('negative_prompt', itemIndex) as string;
 	const seed = this.getNodeParameter('seed', itemIndex) as number;
+
+	// Get binary data from input
+	const inputData = this.getInputData();
+	const binaryData = inputData[itemIndex].binary?.[binaryProperty];
+
+	if (!binaryData) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`No binary data found in property "${binaryProperty}"`,
+			{ itemIndex },
+		);
+	}
 
 	// Get credentials
 	const headers: Record<string, string> = {};
@@ -116,15 +118,16 @@ export async function executeImageToImage(
 
 	// Convert binary data to base64
 	let imageBase64: string;
-	if (typeof inputImage.data === 'string' && inputImage.data.startsWith('data:')) {
-		imageBase64 = inputImage.data.split(',')[1];
-	} else if (typeof inputImage.data === 'string') {
-		imageBase64 = inputImage.data;
+	if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
+		imageBase64 = binaryData.data.split(',')[1];
+	} else if (typeof binaryData.data === 'string') {
+		imageBase64 = binaryData.data;
 	} else {
-		imageBase64 = Buffer.from(inputImage.data as Buffer).toString('base64');
+		imageBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
 	}
 
-	const imageUrl = `data:${inputImage.mimeType || 'image/jpeg'};base64,${imageBase64}`;
+	const mimeType = binaryData.mimeType || 'image/jpeg';
+	const imageUrl = `data:${mimeType};base64,${imageBase64}`;
 
 	// Build query parameters
 	const queryParams = new URLSearchParams({
@@ -148,15 +151,15 @@ export async function executeImageToImage(
 		});
 
 		const contentType = response.headers['content-type'] as string;
-		const mimeType = contentType?.split(';')[0] || 'image/jpeg';
-		const fileExtension = mimeType.split('/')[1] || 'jpg';
+		const outputMimeType = contentType?.split(';')[0] || 'image/jpeg';
+		const fileExtension = outputMimeType.split('/')[1] || 'jpg';
 
 		const imageBuffer = Buffer.from(response.body as ArrayBuffer);
 
-		const binaryData = await this.helpers.prepareBinaryData(
+		const binaryDataOutput = await this.helpers.prepareBinaryData(
 			imageBuffer,
 			`image_edit_${itemIndex}.${fileExtension}`,
-			mimeType,
+			outputMimeType,
 		);
 
 		return {
@@ -165,10 +168,10 @@ export async function executeImageToImage(
 				model,
 				negative_prompt,
 				seed,
-				inputImageMimeType: inputImage.mimeType,
+				inputImageMimeType: mimeType,
 			},
 			binary: {
-				data: binaryData,
+				data: binaryDataOutput,
 			},
 			pairedItem: { item: itemIndex },
 		};

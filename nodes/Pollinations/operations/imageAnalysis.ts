@@ -3,27 +3,17 @@ import { NodeOperationError } from 'n8n-workflow';
 
 export const imageAnalysisOperation: INodeProperties[] = [
 	{
-		displayName: 'Image Input',
-		name: 'imageInput',
-		type: 'resourceMapper',
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: ['image'],
 				operation: ['imageAnalysis'],
 			},
 		},
-		default: {
-			mode: 'list',
-			value: null,
-		},
-		required: true,
-		description: 'Image file to analyze',
-		typeOptions: {
-			resourceMapper: {
-				resourceMapperMethod: 'getImageInput',
-				mode: 'map',
-			},
-		},
+		default: 'data',
+		description: 'Name of the binary property containing the image file',
 	},
 	{
 		displayName: 'Prompt',
@@ -63,9 +53,21 @@ export async function executeImageAnalysis(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const imageInput = this.getNodeParameter('imageInput', itemIndex) as { data: string; mimeType: string };
+	const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const model = this.getNodeParameter('model', itemIndex) as string;
+
+	// Get binary data from input
+	const inputData = this.getInputData();
+	const binaryData = inputData[itemIndex].binary?.[binaryProperty];
+
+	if (!binaryData) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`No binary data found in property "${binaryProperty}"`,
+			{ itemIndex },
+		);
+	}
 
 	// Get credentials
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -84,18 +86,17 @@ export async function executeImageAnalysis(
 
 	// Convert binary data to base64
 	let imageBase64: string;
-	if (typeof imageInput.data === 'string' && imageInput.data.startsWith('data:')) {
-		imageBase64 = imageInput.data.split(',')[1];
-	} else if (typeof imageInput.data === 'string') {
-		imageBase64 = imageInput.data;
+	if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
+		imageBase64 = binaryData.data.split(',')[1];
+	} else if (typeof binaryData.data === 'string') {
+		imageBase64 = binaryData.data;
 	} else {
-		imageBase64 = Buffer.from(imageInput.data as Buffer).toString('base64');
+		imageBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
 	}
 
-	// Determine MIME type
-	const mimeType = imageInput.mimeType || 'image/jpeg';
+	const mimeType = binaryData.mimeType || 'image/jpeg';
 
-	// Build request body with image_url format
+	// Build request body with image_url format for vision
 	const body = {
 		model,
 		messages: [

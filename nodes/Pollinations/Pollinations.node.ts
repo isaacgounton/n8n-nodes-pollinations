@@ -295,6 +295,24 @@ export class Pollinations implements INodeType {
 				return [];
 			}
 		},
+		async getTranscriptionModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			try {
+				const models = (await this.helpers.httpRequest({
+					method: 'GET',
+					url: 'https://gen.pollinations.ai/text/models',
+				})) as Array<{ name: string; input_modalities: string[] }>;
+
+				return models
+					.filter((m) => m.input_modalities?.includes('audio'))
+					.map((m) => ({
+						name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
+						value: m.name,
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name));
+			} catch {
+				return [];
+			}
+		},
 		},
 	};
 

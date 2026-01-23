@@ -32,7 +32,7 @@ export const audioTranscriptionOperation: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Model',
+		displayName: 'Model Name or ID',
 		name: 'model',
 		type: 'options',
 		displayOptions: {
@@ -41,13 +41,11 @@ export const audioTranscriptionOperation: INodeProperties[] = [
 				operation: ['audioTranscription'],
 			},
 		},
-		options: [
-			{ name: 'Gemini', value: 'gemini' },
-			{ name: 'Gemini Large', value: 'gemini-large' },
-			{ name: 'Gemini Legacy', value: 'gemini-legacy' },
-		],
-		default: 'gemini',
-		description: 'AI model for transcription',
+		typeOptions: {
+			loadOptionsMethod: 'getTranscriptionModels',
+		},
+		default: '',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	},
 ];
 
@@ -60,8 +58,8 @@ export async function executeAudioTranscription(
 	const model = this.getNodeParameter('model', itemIndex) as string;
 
 	// Get binary data from input
-	const inputData = this.getInputData(itemIndex);
-	const binaryData = inputData[0].binary?.[binaryPropertyName];
+	const inputData = this.getInputData();
+	const binaryData = inputData[itemIndex].binary?.[binaryPropertyName];
 
 	if (!binaryData) {
 		throw new NodeOperationError(
@@ -116,16 +114,20 @@ export async function executeAudioTranscription(
 
 	const format = formatMap[mimeType] || 'mp3';
 
-	// Build request body
+	// Build request body with system prompt to get clean transcription
 	const body = {
 		model,
 		messages: [
+			{
+				role: 'system',
+				content: 'You are a transcriber. Return ONLY the exact text spoken in the audio, without any introduction, commentary, or formatting. Do not include phrases like "Here is the transcription" or quotes around the text.',
+			},
 			{
 				role: 'user',
 				content: [
 					{
 						type: 'text',
-						text: prompt,
+						text: prompt || 'Transcribe this audio exactly as spoken.',
 					},
 					{
 						type: 'input_audio',
@@ -148,10 +150,26 @@ export async function executeAudioTranscription(
 			json: true,
 		});
 
-		const transcription = response.choices?.[0]?.message?.content;
+		let transcription = response.choices?.[0]?.message?.content;
 		if (!transcription) {
 			throw new Error('No transcription in response');
 		}
+
+		// Post-process: remove common conversational prefixes
+		const prefixesToRemove = [
+			/^Here is the transcription[^:]*:\s*/i,
+			/^The transcription is:\s*/i,
+			/^Transcription:\s*/i,
+			/^Audio transcription:\s*/i,
+			/^Text:\s*/i,
+			/^["'']|["'']$/g, // Remove surrounding quotes
+		];
+
+		for (const prefix of prefixesToRemove) {
+			transcription = transcription.replace(prefix, '');
+		}
+
+		transcription = transcription.trim();
 
 		return {
 			json: {
