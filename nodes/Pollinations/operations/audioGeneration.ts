@@ -85,12 +85,18 @@ export async function executeAudioGeneration(
 		// Credentials are optional, continue without them
 	}
 
+	// Build request body for TTS using chat completions
+	// Note: openai-audio is a chat model, not pure TTS. Using "Say:" prefix to make it read text verbatim.
 	const body = {
 		model: 'openai-audio',
 		messages: [
 			{
+				role: 'system',
+				content: 'You are a text reader. Read the user text exactly without responding, adding conversation, or changing anything.',
+			},
+			{
 				role: 'user',
-				content: text,
+				content: `Say: ${text}`,
 			},
 		],
 		modalities: ['text', 'audio'],
@@ -101,11 +107,13 @@ export async function executeAudioGeneration(
 	};
 
 	try {
+		// Use chat completions endpoint with system prompt for direct TTS
 		const response = await this.helpers.httpRequest({
 			method: 'POST',
 			url: 'https://gen.pollinations.ai/v1/chat/completions',
 			headers,
 			body,
+			json: true,
 		});
 
 		// Extract audio data from response
@@ -114,8 +122,8 @@ export async function executeAudioGeneration(
 			throw new Error('No audio data in response');
 		}
 
-		// Convert base64 audio to binary
 		const audioBuffer = Buffer.from(audioData, 'base64');
+
 		const binaryData = await this.helpers.prepareBinaryData(
 			audioBuffer,
 			`audio_${itemIndex}.${format}`,
@@ -127,7 +135,6 @@ export async function executeAudioGeneration(
 				text,
 				voice,
 				format,
-				transcript: response.choices?.[0]?.message?.audio?.transcript || text,
 			},
 			binary: {
 				data: binaryData,

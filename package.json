@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-pollinations-v2",
-	"version": "1.2.25",
+	"version": "1.2.29",
 	"description": "n8n community node for Pollinations.ai - Generate images, videos, text, and audio using AI",
 	"license": "MIT",
 	"homepage": "https://github.com/isaacgounton/n8n-nodes-pollinations",
