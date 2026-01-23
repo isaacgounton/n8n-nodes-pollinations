@@ -7,6 +7,12 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	OpenResponsesRequest,
+	OpenResponsesInputItem,
+	OpenResponsesTool,
+} from './types';
+import { PollinationsOpenResponsesClient } from './OpenResponsesClient';
 
 // Simple AIMessage implementation for compatibility
 class AIMessage {
@@ -260,6 +266,224 @@ class PollinationsChatModelInstance {
 	}
 }
 
+// LangChain-compatible Runnable chat model using Open Responses API
+class PollinationsOpenResponsesModelInstance {
+	modelName: string;
+	temperature: number;
+	maxTokens?: number;
+	topP?: number;
+	baseURL: string;
+	apiKey: string;
+	instructions?: string;
+	reasoningEffort?: 'low' | 'medium' | 'high';
+	private client: PollinationsOpenResponsesClient;
+
+	// LangChain Runnable interface properties
+	lc_namespace = ['langchain', 'chat_models', 'pollinations'];
+	lc_serializable = true;
+	lc_runnable = true;
+
+	constructor(fields: {
+		modelName: string;
+		temperature?: number;
+		maxTokens?: number;
+		topP?: number;
+		apiKey: string;
+		instructions?: string;
+		reasoningEffort?: 'low' | 'medium' | 'high';
+	}) {
+		this.modelName = fields.modelName;
+		this.temperature = fields.temperature ?? 1;
+		this.maxTokens = fields.maxTokens;
+		this.topP = fields.topP;
+		this.baseURL = 'https://gen.pollinations.ai';
+		this.apiKey = fields.apiKey;
+		this.instructions = fields.instructions;
+		this.reasoningEffort = fields.reasoningEffort;
+		this.client = new PollinationsOpenResponsesClient(this.baseURL, this.apiKey);
+	}
+
+	_llmType(): string {
+		return 'pollinations-open-responses';
+	}
+
+	getName(): string {
+		return 'PollinationsOpenResponsesChatModel';
+	}
+
+	// Convert LangChain messages to Open Responses format
+	private convertToOpenResponsesInput(messages: unknown[]): OpenResponsesInputItem[] {
+		return messages.map((message) => {
+			const msg = message as Record<string, unknown>;
+			const type = (msg._getType as () => string)?.() ?? (msg.type as string) ?? 'message';
+			const role = (msg.role as string) ?? 'user';
+
+			if (type === 'function_call_output') {
+				return {
+					type: 'function_call_output',
+					call_id: String((msg.call_id as string) ?? ''),
+					output: String((msg.output as string) ?? ''),
+				};
+			}
+
+			return {
+				type: 'message',
+				role: role as 'user' | 'assistant' | 'system',
+				content: String((msg.content as string) ?? ''),
+			};
+		});
+	}
+
+	// Runnable interface methods
+	async invoke(input: unknown): Promise<AIMessage> {
+		let inputItems: OpenResponsesInputItem[];
+
+		if (Array.isArray(input)) {
+			inputItems = this.convertToOpenResponsesInput(input);
+		} else if (typeof input === 'string') {
+			inputItems = [{ type: 'message', role: 'user', content: input }];
+		} else {
+			inputItems = this.convertToOpenResponsesInput([input]);
+		}
+
+		const request: OpenResponsesRequest = {
+			model: this.modelName,
+			input: inputItems,
+			...(this.instructions && { instructions: this.instructions }),
+			temperature: this.temperature,
+			...(this.maxTokens && { max_tokens: this.maxTokens }),
+			...(this.topP !== undefined && { top_p: this.topP }),
+			...(this.reasoningEffort && { reasoning: { effort: this.reasoningEffort } }),
+		};
+
+		// Add tools if available
+		const boundTools = (this as PollinationsOpenResponsesModelInstance & {
+			boundTools?: unknown[];
+		}).boundTools;
+		if (boundTools && boundTools.length > 0) {
+			request.tools = boundTools as OpenResponsesTool[];
+			request.tool_choice = 'auto';
+		}
+
+		const response = await this.client.createResponse(request);
+
+		// Convert tool calls to LangChain format
+		const toolCalls = response.output
+			.filter((item) => item.type === 'function_call')
+			.map((item) => ({
+				id: item.call_id ?? '',
+				type: 'function',
+				function: {
+					name: item.name ?? '',
+					arguments: item.arguments ?? '{}',
+				},
+			}));
+
+		return new AIMessage(response.output_text, toolCalls);
+	}
+
+	// LangChain _generate method for compatibility
+	async _generate(messages: unknown[]): Promise<ChatResult> {
+		const convertedMessages = this.convertToOpenResponsesInput(messages);
+		const request: OpenResponsesRequest = {
+			model: this.modelName,
+			input: convertedMessages,
+			...(this.instructions && { instructions: this.instructions }),
+			temperature: this.temperature,
+			...(this.maxTokens && { max_tokens: this.maxTokens }),
+			...(this.topP !== undefined && { top_p: this.topP }),
+			...(this.reasoningEffort && { reasoning: { effort: this.reasoningEffort } }),
+		};
+
+		// Add tools if available
+		const boundTools = (this as PollinationsOpenResponsesModelInstance & {
+			boundTools?: unknown[];
+		}).boundTools;
+		if (boundTools && boundTools.length > 0) {
+			request.tools = boundTools as OpenResponsesTool[];
+			request.tool_choice = 'auto';
+		}
+
+		const response = await this.client.createResponse(request);
+
+		const toolCalls = response.output
+			.filter((item) => item.type === 'function_call')
+			.map((item) => ({
+				id: item.call_id ?? '',
+				type: 'function',
+				function: {
+					name: item.name ?? '',
+					arguments: item.arguments ?? '{}',
+				},
+			}));
+
+		const aiMessage = new AIMessage(response.output_text, toolCalls);
+
+		const generation: ChatGeneration = {
+			message: aiMessage,
+			text: response.output_text,
+			generationInfo: {
+				finish_reason: 'stop',
+				response_id: response.id,
+				...(toolCalls.length > 0 && { tool_calls: toolCalls }),
+			},
+		};
+
+		return {
+			generations: [generation],
+			llmOutput: {
+				tokenUsage: response.usage,
+			},
+		};
+	}
+
+	async batch(inputs: unknown[]): Promise<AIMessage[]> {
+		return Promise.all(inputs.map((input) => this.invoke(input)));
+	}
+
+	pipe(nextRunnable: unknown): unknown {
+		const pipeFunction = async (input: unknown) => {
+			const output = await this.invoke(input);
+			if (typeof nextRunnable === 'function') {
+				return await nextRunnable(output);
+			}
+			if (
+				nextRunnable &&
+				typeof nextRunnable === 'object' &&
+				'invoke' in nextRunnable
+			) {
+				return await (nextRunnable as {
+					invoke: (input: unknown) => Promise<unknown>;
+				}).invoke(output);
+			}
+			return output;
+		};
+		return pipeFunction;
+	}
+
+	withConfig(config: Record<string, unknown>): this {
+		const newInstance = new PollinationsOpenResponsesModelInstance({
+			modelName: this.modelName,
+			temperature: (config.temperature as number) ?? this.temperature,
+			maxTokens: (config.maxTokens as number) ?? this.maxTokens,
+			topP: (config.topP as number) ?? this.topP,
+			apiKey: this.apiKey,
+			instructions: this.instructions,
+			reasoningEffort: this.reasoningEffort,
+		});
+		return newInstance as this;
+	}
+
+	bindTools(tools: unknown[]): this {
+		(
+			this as PollinationsOpenResponsesModelInstance & {
+				boundTools?: unknown[];
+			}
+		).boundTools = tools;
+		return this;
+	}
+}
+
 export class PollinationsChatModel implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pollinations Chat Model',
@@ -306,6 +530,40 @@ export class PollinationsChatModel implements INodeType {
 				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
+				displayName: 'API Mode',
+				name: 'apiMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Chat Completions (Legacy)',
+						value: 'chat-completions',
+						description: 'OpenAI-compatible chat completions API',
+					},
+					{
+						name: 'Open Responses',
+						value: 'open-responses',
+						description: 'Open Responses API with enhanced features (streaming, reasoning traces, tool calling)',
+					},
+				],
+				default: 'chat-completions',
+				description: 'Choose the API mode to use. Open Responses provides enhanced features but requires API support.',
+			},
+			{
+				displayName: 'System Instructions',
+				name: 'instructions',
+				type: 'string',
+				typeOptions: {
+					rows: 4,
+				},
+				default: '',
+				description: 'System instructions for the model (Open Responses mode only). Provides context and behavior guidelines.',
+				displayOptions: {
+					show: {
+						apiMode: ['open-responses'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -341,6 +599,24 @@ export class PollinationsChatModel implements INodeType {
 							minValue: 0,
 							maxValue: 1,
 							numberPrecision: 2,
+						},
+					},
+					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoningEffort',
+						type: 'options',
+						options: [
+							{ name: 'None', value: '' },
+							{ name: 'Low', value: 'low' },
+							{ name: 'Medium', value: 'medium' },
+							{ name: 'High', value: 'high' },
+						],
+						default: '',
+						description: 'Reasoning effort level for models that support it (Open Responses mode only). Higher effort may produce more thoughtful responses.',
+						displayOptions: {
+							show: {
+								apiMode: ['open-responses'],
+							},
 						},
 					},
 				],
@@ -397,22 +673,44 @@ export class PollinationsChatModel implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('pollinationsApi');
 		const model = this.getNodeParameter('model', itemIndex) as string;
+		const apiMode = this.getNodeParameter('apiMode', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature?: number;
 			maxTokens?: number;
 			topP?: number;
+			reasoningEffort?: 'low' | 'medium' | 'high';
 		};
 
-		const chatModel = new PollinationsChatModelInstance({
-			modelName: model,
-			temperature: options.temperature,
-			maxTokens: options.maxTokens,
-			topP: options.topP,
-			apiKey: credentials.apiKey as string,
-		});
+		const instructions = this.getNodeParameter('instructions', itemIndex, '') as string;
 
-		return {
-			response: chatModel,
-		};
+		if (apiMode === 'open-responses') {
+			// Use Open Responses API
+			const chatModel = new PollinationsOpenResponsesModelInstance({
+				modelName: model,
+				temperature: options.temperature,
+				maxTokens: options.maxTokens,
+				topP: options.topP,
+				apiKey: credentials.apiKey as string,
+				instructions: instructions || undefined,
+				reasoningEffort: options.reasoningEffort,
+			});
+
+			return {
+				response: chatModel,
+			};
+		} else {
+			// Use legacy Chat Completions API
+			const chatModel = new PollinationsChatModelInstance({
+				modelName: model,
+				temperature: options.temperature,
+				maxTokens: options.maxTokens,
+				topP: options.topP,
+				apiKey: credentials.apiKey as string,
+			});
+
+			return {
+				response: chatModel,
+			};
+		}
 	}
 }

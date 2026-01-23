@@ -141,11 +141,16 @@ Use Pollinations language models with n8n's AI Agent, AI Chain, and other AI wor
 
 1. Add the **Pollinations Chat Model** node to your workflow
 2. Select your preferred model (OpenAI, Claude, Gemini, Mistral, etc.)
-3. Configure options:
+3. Choose **API Mode**:
+   - **Chat Completions (Legacy)**: OpenAI-compatible API (default)
+   - **Open Responses**: Enhanced API with additional features
+4. Configure options:
+   - **System Instructions** (Open Responses mode): Set system prompt
    - **Temperature**: Controls randomness (0-2)
    - **Max Tokens**: Maximum response length
    - **Top P**: Nucleus sampling parameter
-4. Connect to AI Agent or AI Chain nodes
+   - **Reasoning Effort** (Open Responses mode): Control reasoning depth
+5. Connect to AI Agent or AI Chain nodes
 
 **Benefits**:
 
@@ -153,6 +158,22 @@ Use Pollinations language models with n8n's AI Agent, AI Chain, and other AI wor
 - Seamless integration with n8n's AI ecosystem
 - Full langchain compatibility
 - Cost-effective alternative to direct API providers
+- **Open Responses API mode** provides:
+  - Event-based streaming support
+  - Enhanced tool calling capabilities
+  - Reasoning traces from compatible models
+  - Structured multi-turn conversations
+
+**Open Responses API**:
+
+The Open Responses mode uses the [Open Responses API specification](https://openresponses.org) for enhanced AI interactions. This mode requires Pollinations API support for the `/v1/responses` endpoint.
+
+Features available in Open Responses mode:
+- System instructions for better model behavior control
+- Reasoning effort configuration for thinking models
+- Improved tool calling and function execution
+- Streaming responses with semantic events
+- Multi-turn conversation management
 
 ## Usage Examples
 
