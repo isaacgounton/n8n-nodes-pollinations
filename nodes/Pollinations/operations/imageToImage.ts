@@ -102,7 +102,7 @@ export async function executeImageToImage(
 	}
 
 	// Get credentials
-	const headers: Record<string, string> = {};
+	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 	try {
 		const credentials = await this.getCredentials('pollinationsApi');
 		if (credentials?.apiKey) {
@@ -129,23 +129,29 @@ export async function executeImageToImage(
 	const mimeType = binaryData.mimeType || 'image/jpeg';
 	const imageUrl = `data:${mimeType};base64,${imageBase64}`;
 
-	// Build query parameters
+	// Build query parameters for GET request (small params only)
 	const queryParams = new URLSearchParams({
 		model,
-		prompt,
-		image: imageUrl,
+		// Don't include prompt and image in query params - use POST body instead
 	});
-
 	if (negative_prompt) queryParams.set('negative_prompt', negative_prompt);
 	if (seed !== undefined && seed !== -1) queryParams.set('seed', seed.toString());
 
+	// Use POST to avoid URL length limit with base64 image
 	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${queryParams.toString()}`;
 
 	try {
 		const response = await this.helpers.httpRequest({
-			method: 'GET',
+			method: 'POST',
 			url,
-			headers,
+			headers: {
+				...headers,
+				'Content-Type': 'application/json',
+			},
+			body: {
+				image: imageUrl,
+			},
+			json: true,
 			encoding: 'arraybuffer',
 			returnFullResponse: true,
 		});

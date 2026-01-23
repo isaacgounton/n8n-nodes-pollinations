@@ -3,6 +3,29 @@ import { NodeOperationError } from 'n8n-workflow';
 
 export const videoAnalysisOperation: INodeProperties[] = [
 	{
+		displayName: 'Input Source',
+		name: 'inputSource',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['video'],
+				operation: ['videoAnalysis'],
+			},
+		},
+		options: [
+			{
+				name: 'Binary Property',
+				value: 'binary',
+			},
+			{
+				name: 'Video URL',
+				value: 'url',
+			},
+		],
+		default: 'binary',
+		description: 'How to provide the video file',
+	},
+	{
 		displayName: 'Binary Property',
 		name: 'binaryProperty',
 		type: 'string',
@@ -10,10 +33,25 @@ export const videoAnalysisOperation: INodeProperties[] = [
 			show: {
 				resource: ['video'],
 				operation: ['videoAnalysis'],
+				inputSource: ['binary'],
 			},
 		},
 		default: 'data',
 		description: 'Name of the binary property containing the video file',
+	},
+	{
+		displayName: 'Video URL',
+		name: 'videoUrl',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['video'],
+				operation: ['videoAnalysis'],
+				inputSource: ['url'],
+			},
+		},
+		default: '',
+		description: 'URL of the video file to analyze (more reliable than binary upload for large videos)',
 	},
 	{
 		displayName: 'Prompt',
@@ -53,21 +91,9 @@ export async function executeVideoAnalysis(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex) as string;
+	const inputSource = this.getNodeParameter('inputSource', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const model = this.getNodeParameter('model', itemIndex) as string;
-
-	// Get binary data from input
-	const inputData = this.getInputData();
-	const binaryData = inputData[itemIndex].binary?.[binaryProperty];
-
-	if (!binaryData) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`No binary data found in property "${binaryProperty}"`,
-			{ itemIndex },
-		);
-	}
 
 	// Get credentials
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -84,37 +110,72 @@ export async function executeVideoAnalysis(
 		);
 	}
 
-	// Convert binary data to base64
-	let videoBase64: string;
-	if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
-		videoBase64 = binaryData.data.split(',')[1];
-	} else if (typeof binaryData.data === 'string') {
-		videoBase64 = binaryData.data;
+	// Build content array based on input source
+	const content: Array<{ type: string; text?: string; video_url?: { url: string }; input_video?: { data: string; format: string } }> = [
+		{
+			type: 'text',
+			text: prompt,
+		},
+	];
+
+	if (inputSource === 'url') {
+		// Use video URL (more reliable for large videos)
+		const videoUrl = this.getNodeParameter('videoUrl', itemIndex) as string;
+		if (!videoUrl) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Video URL is required when using URL input source',
+				{ itemIndex },
+			);
+		}
+		content.push({
+			type: 'video_url',
+			video_url: {
+				url: videoUrl,
+			},
+		});
 	} else {
-		videoBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
+		// Use binary upload (may have issues with large videos)
+		const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex) as string;
+		const inputData = this.getInputData();
+		const binaryData = inputData[itemIndex].binary?.[binaryProperty];
+
+		if (!binaryData) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`No binary data found in property "${binaryProperty}"`,
+				{ itemIndex },
+			);
+		}
+
+		// Convert binary data to base64
+		let videoBase64: string;
+		if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
+			videoBase64 = binaryData.data.split(',')[1];
+		} else if (typeof binaryData.data === 'string') {
+			videoBase64 = binaryData.data;
+		} else {
+			videoBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
+		}
+
+		const mimeType = binaryData.mimeType || 'video/mp4';
+
+		content.push({
+			type: 'input_video',
+			input_video: {
+				data: videoBase64,
+				format: mimeType.split('/')[1] || 'mp4',
+			},
+		});
 	}
 
-	const mimeType = binaryData.mimeType || 'video/mp4';
-
-	// Build request body with input_video format
+	// Build request body
 	const body = {
 		model,
 		messages: [
 			{
 				role: 'user',
-				content: [
-					{
-						type: 'text',
-						text: prompt,
-					},
-					{
-						type: 'input_video',
-						input_video: {
-							data: videoBase64,
-							format: mimeType.split('/')[1] || 'mp4',
-						},
-					},
-				],
+				content,
 			},
 		],
 	};
@@ -138,7 +199,7 @@ export async function executeVideoAnalysis(
 				analysis,
 				model,
 				prompt,
-				videoMimeType: mimeType,
+				inputSource,
 			},
 			pairedItem: { item: itemIndex },
 		};
