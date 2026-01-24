@@ -194,7 +194,9 @@ export async function executeImageToImage(
 	if (seed !== undefined && seed !== -1) queryParams.set('seed', seed.toString());
 
 	// Build URL - using GET endpoint
-	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${queryParams.toString()}`;
+	// Replace % with "percent" to avoid API 400 errors (encoded %25 in path causes issues)
+	const sanitizedPrompt = prompt.replace(/%/g, 'percent');
+	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(sanitizedPrompt)}?${queryParams.toString()}`;
 
 	try {
 		const response = await this.helpers.httpRequest({

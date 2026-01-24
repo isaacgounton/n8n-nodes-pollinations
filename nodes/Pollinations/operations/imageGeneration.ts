@@ -226,8 +226,10 @@ export async function executeImageGeneration(
 	}
 
 	// Build URL with query parameters
+	// Replace % with "percent" to avoid API 400 errors (encoded %25 in path causes issues)
+	const sanitizedPrompt = prompt.replace(/%/g, 'percent');
 	const queryString = new URLSearchParams(queryParams).toString();
-	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${queryString}`;
+	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(sanitizedPrompt)}?${queryString}`;
 
 	try {
 		const response = await this.helpers.httpRequest({
