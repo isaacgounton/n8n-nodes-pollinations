@@ -220,99 +220,99 @@ export class Pollinations implements INodeType {
 					return [];
 				}
 			},
-			async getTextModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-			try {
-				const response = (await this.helpers.httpRequest({
-					method: 'GET',
-					url: 'https://gen.pollinations.ai/v1/models',
-				})) as { data: Array<{ id: string }> };
+				async getTextModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const response = (await this.helpers.httpRequest({
+						method: 'GET',
+						url: 'https://gen.pollinations.ai/v1/models',
+					})) as { data: Array<{ id: string }> };
 
-				if (!response?.data || !Array.isArray(response.data)) {
+					if (!response?.data || !Array.isArray(response.data)) {
+						return [];
+					}
+
+					return response.data
+						.map((m) => ({
+							name: m.id.charAt(0).toUpperCase() + m.id.slice(1).replace(/-/g, ' '),
+							value: m.id,
+						}))
+						.sort((a, b) => a.name.localeCompare(b.name));
+				} catch {
 					return [];
 				}
+			},
+			async getVisionModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const models = (await this.helpers.httpRequest({
+						method: 'GET',
+						url: 'https://gen.pollinations.ai/text/models',
+					})) as Array<{ name: string; input_modalities: string[] }>;
 
-				return response.data
-					.map((m) => ({
-						name: m.id.charAt(0).toUpperCase() + m.id.slice(1).replace(/-/g, ' '),
-						value: m.id,
-					}))
-					.sort((a, b) => a.name.localeCompare(b.name));
-			} catch {
-				return [];
-			}
-		},
-		async getVisionModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-			try {
-				const models = (await this.helpers.httpRequest({
-					method: 'GET',
-					url: 'https://gen.pollinations.ai/text/models',
-				})) as Array<{ name: string; input_modalities: string[] }>;
+					return models
+						.filter((m) => m.input_modalities?.includes('image'))
+						.map((m) => ({
+							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
+							value: m.name,
+						}))
+						.sort((a, b) => a.name.localeCompare(b.name));
+				} catch {
+					return [];
+				}
+			},
+			async getImageToImageModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const models = (await this.helpers.httpRequest({
+						method: 'GET',
+						url: 'https://gen.pollinations.ai/image/models',
+					})) as Array<{ name: string; input_modalities: string[]; output_modalities: string[] }>;
 
-				return models
-					.filter((m) => m.input_modalities?.includes('image'))
-					.map((m) => ({
-						name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
-						value: m.name,
-					}))
-					.sort((a, b) => a.name.localeCompare(b.name));
-			} catch {
-				return [];
-			}
-		},
-		async getImageToImageModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-			try {
-				const models = (await this.helpers.httpRequest({
-					method: 'GET',
-					url: 'https://gen.pollinations.ai/image/models',
-				})) as Array<{ name: string; input_modalities: string[]; output_modalities: string[] }>;
+					return models
+						.filter((m) => m.input_modalities?.includes('image') && m.output_modalities?.includes('image'))
+						.map((m) => ({
+							name: m.name.charAt(0).toUpperCase() + m.name.slice(1),
+							value: m.name,
+						}))
+						.sort((a, b) => a.name.localeCompare(b.name));
+				} catch {
+					return [];
+				}
+			},
+			async getVideoAnalysisModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const models = (await this.helpers.httpRequest({
+						method: 'GET',
+						url: 'https://gen.pollinations.ai/text/models',
+					})) as Array<{ name: string; input_modalities: string[] }>;
 
-				return models
-					.filter((m) => m.input_modalities?.includes('image') && m.output_modalities?.includes('image'))
-					.map((m) => ({
-						name: m.name.charAt(0).toUpperCase() + m.name.slice(1),
-						value: m.name,
-					}))
-					.sort((a, b) => a.name.localeCompare(b.name));
-			} catch {
-				return [];
-			}
-		},
-		async getVideoAnalysisModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-			try {
-				const models = (await this.helpers.httpRequest({
-					method: 'GET',
-					url: 'https://gen.pollinations.ai/text/models',
-				})) as Array<{ name: string; input_modalities: string[] }>;
+					return models
+						.filter((m) => m.input_modalities?.includes('video'))
+						.map((m) => ({
+							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
+							value: m.name,
+						}))
+						.sort((a, b) => a.name.localeCompare(b.name));
+				} catch {
+					return [];
+				}
+			},
+			async getTranscriptionModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const models = (await this.helpers.httpRequest({
+						method: 'GET',
+						url: 'https://gen.pollinations.ai/text/models',
+					})) as Array<{ name: string; input_modalities: string[] }>;
 
-				return models
-					.filter((m) => m.input_modalities?.includes('video'))
-					.map((m) => ({
-						name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
-						value: m.name,
-					}))
-					.sort((a, b) => a.name.localeCompare(b.name));
-			} catch {
-				return [];
-			}
-		},
-		async getTranscriptionModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-			try {
-				const models = (await this.helpers.httpRequest({
-					method: 'GET',
-					url: 'https://gen.pollinations.ai/text/models',
-				})) as Array<{ name: string; input_modalities: string[] }>;
-
-				return models
-					.filter((m) => m.input_modalities?.includes('audio'))
-					.map((m) => ({
-						name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
-						value: m.name,
-					}))
-					.sort((a, b) => a.name.localeCompare(b.name));
-			} catch {
-				return [];
-			}
-		},
+					return models
+						.filter((m) => m.input_modalities?.includes('audio'))
+						.map((m) => ({
+							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
+							value: m.name,
+						}))
+						.sort((a, b) => a.name.localeCompare(b.name));
+				} catch {
+					return [];
+				}
+			},
 		},
 	};
 
@@ -363,7 +363,7 @@ export class Pollinations implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
-						json: this.getInputData(itemIndex)[0].json,
+						json: items[itemIndex].json,
 						error,
 						pairedItem: { item: itemIndex },
 					});

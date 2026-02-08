@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { sanitizePromptForUrl } from '../utils';
 
 export const imageGenerationOperation: INodeProperties[] = [
 	{
@@ -212,22 +213,14 @@ export async function executeImageGeneration(
 		queryParams.quality = additionalOptions.quality;
 	}
 
-	// Get credentials if available
-	const headers: Record<string, string> = {};
+	// Get credentials
 	const credentials = await this.getCredentials('pollinationsApi');
-	if (credentials?.apiKey) {
-		headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-	} else {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Pollinations API key is required. Please add your credentials.',
-			{ itemIndex },
-		);
-	}
+	const headers: Record<string, string> = {
+		Authorization: `Bearer ${credentials.apiKey}`,
+	};
 
 	// Build URL with query parameters
-	// Replace % with "percent" to avoid API 400 errors (encoded %25 in path causes issues)
-	const sanitizedPrompt = prompt.replace(/%/g, 'percent');
+	const sanitizedPrompt = sanitizePromptForUrl(prompt);
 	const queryString = new URLSearchParams(queryParams).toString();
 	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(sanitizedPrompt)}?${queryString}`;
 

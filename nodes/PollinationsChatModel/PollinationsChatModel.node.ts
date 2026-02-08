@@ -205,6 +205,11 @@ class PollinationsChatModelInstance {
 			topP: config.topP as number ?? this.topP,
 			apiKey: this.apiKey,
 		});
+		// Preserve bound tools from the original instance
+		const currentTools = (this as PollinationsChatModelInstance & { boundTools?: unknown[] }).boundTools;
+		if (currentTools) {
+			(newInstance as PollinationsChatModelInstance & { boundTools?: unknown[] }).boundTools = currentTools;
+		}
 		return newInstance as this;
 	}
 
@@ -370,24 +375,18 @@ export class PollinationsChatModel implements INodeType {
 						}))
 						.sort((a, b) => a.name.localeCompare(b.name));
 
-					return models.length > 0 ? models : [
-						{ name: 'OpenAI', value: 'openai' },
-						{ name: 'Claude', value: 'claude' },
-						{ name: 'Gemini', value: 'gemini' },
-						{ name: 'Mistral', value: 'mistral' },
-						{ name: 'DeepSeek', value: 'deepseek' },
-					];
+					if (models.length > 0) return models;
+					throw new ApplicationError('Empty model list');
 				} catch {
-					// Return fallback models if API call fails
+					// Fallback models when API is unreachable
 					return [
-						{ name: 'OpenAI', value: 'openai' },
 						{ name: 'Claude', value: 'claude' },
-						{ name: 'Gemini', value: 'gemini' },
-						{ name: 'Mistral', value: 'mistral' },
 						{ name: 'DeepSeek', value: 'deepseek' },
+						{ name: 'Gemini', value: 'gemini' },
 						{ name: 'Grok', value: 'grok' },
+						{ name: 'Mistral', value: 'mistral' },
+						{ name: 'OpenAI', value: 'openai' },
 						{ name: 'Qwen Coder', value: 'qwen-coder' },
-						{ name: 'Perplexity Fast', value: 'perplexity-fast' },
 					];
 				}
 			},

@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { extractBase64, sanitizePromptForUrl } from '../utils';
 
 export const imageToImageOperation: INodeProperties[] = [
 	{
@@ -129,19 +130,10 @@ export async function executeImageToImage(
 	const seed = this.getNodeParameter('seed', itemIndex) as number;
 
 	// Get credentials
-	const headers: Record<string, string> = {};
-	try {
-		const credentials = await this.getCredentials('pollinationsApi');
-		if (credentials?.apiKey) {
-			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
-	} catch {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Pollinations API key is required. Please add your credentials.',
-			{ itemIndex },
-		);
-	}
+	const credentials = await this.getCredentials('pollinationsApi');
+	const headers: Record<string, string> = {
+		Authorization: `Bearer ${credentials.apiKey}`,
+	};
 
 	// Get image URL based on input source
 	let imageUrl: string;
@@ -171,14 +163,7 @@ export async function executeImageToImage(
 		}
 
 		// Convert binary data to base64
-		let imageBase64: string;
-		if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
-			imageBase64 = binaryData.data.split(',')[1];
-		} else if (typeof binaryData.data === 'string') {
-			imageBase64 = binaryData.data;
-		} else {
-			imageBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
-		}
+		const imageBase64 = extractBase64(binaryData.data);
 
 		inputMimeType = binaryData.mimeType || 'image/jpeg';
 		imageUrl = `data:${inputMimeType};base64,${imageBase64}`;
@@ -193,9 +178,8 @@ export async function executeImageToImage(
 	if (negative_prompt) queryParams.set('negative_prompt', negative_prompt);
 	if (seed !== undefined && seed !== -1) queryParams.set('seed', seed.toString());
 
-	// Build URL - using GET endpoint
-	// Replace % with "percent" to avoid API 400 errors (encoded %25 in path causes issues)
-	const sanitizedPrompt = prompt.replace(/%/g, 'percent');
+	// Build URL - using GET endpoint (handles both image and video based on model)
+	const sanitizedPrompt = sanitizePromptForUrl(prompt);
 	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(sanitizedPrompt)}?${queryParams.toString()}`;
 
 	try {

@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { extractBase64 } from '../utils';
 
 export const imageAnalysisOperation: INodeProperties[] = [
 	{
@@ -70,29 +71,14 @@ export async function executeImageAnalysis(
 	}
 
 	// Get credentials
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-	try {
-		const credentials = await this.getCredentials('pollinationsApi');
-		if (credentials?.apiKey) {
-			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
-	} catch {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Pollinations API key is required. Please add your credentials.',
-			{ itemIndex },
-		);
-	}
+	const credentials = await this.getCredentials('pollinationsApi');
+	const headers: Record<string, string> = {
+		Authorization: `Bearer ${credentials.apiKey}`,
+		'Content-Type': 'application/json',
+	};
 
 	// Convert binary data to base64
-	let imageBase64: string;
-	if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
-		imageBase64 = binaryData.data.split(',')[1];
-	} else if (typeof binaryData.data === 'string') {
-		imageBase64 = binaryData.data;
-	} else {
-		imageBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
-	}
+	const imageBase64 = extractBase64(binaryData.data);
 
 	const mimeType = binaryData.mimeType || 'image/jpeg';
 

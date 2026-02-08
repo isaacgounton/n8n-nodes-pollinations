@@ -192,16 +192,11 @@ export async function executeTextGeneration(
 ): Promise<INodeExecutionData> {
 	const generationType = this.getNodeParameter('textGenerationType', itemIndex) as string;
 
-	// Get credentials if available
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-	try {
-		const credentials = await this.getCredentials('pollinationsApi');
-		if (credentials?.apiKey) {
-			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
-	} catch {
-		// Credentials are optional, continue without them
-	}
+	// Get credentials
+	const credentials = await this.getCredentials('pollinationsApi');
+	const headers: Record<string, string> = {
+		Authorization: `Bearer ${credentials.apiKey}`,
+	};
 
 	if (generationType === 'simple') {
 		const prompt = this.getNodeParameter('textPrompt', itemIndex) as string;
@@ -232,7 +227,7 @@ export async function executeTextGeneration(
 		// Chat completion
 		const model = this.getNodeParameter('textModel', itemIndex) as string;
 		const messagesData = this.getNodeParameter('messages', itemIndex) as {
-			messageValues: Array<{ role: string; content: string; image_url?: string }>;
+			messageValues: Array<{ role: string; content: string }>;
 		};
 		const additionalOptions = this.getNodeParameter('textAdditionalOptions', itemIndex, {}) as {
 			temperature?: number;
@@ -244,21 +239,12 @@ export async function executeTextGeneration(
 			thinking_budget?: number;
 		};
 
-		const messages = messagesData.messageValues.map((msg) => {
-			if (msg.image_url) {
-				return {
-					role: msg.role,
-					content: [
-						{ type: 'text', text: msg.content },
-						{ type: 'image_url', image_url: { url: msg.image_url } },
-					],
-				};
-			}
-			return {
-				role: msg.role,
-				content: msg.content,
-			};
-		});
+		const messages = messagesData.messageValues.map((msg) => ({
+			role: msg.role,
+			content: msg.content,
+		}));
+
+		headers['Content-Type'] = 'application/json';
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const body: Record<string, any> = {

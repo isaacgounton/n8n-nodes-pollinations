@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { extractBase64 } from '../utils';
 
 export const audioTranscriptionOperation: INodeProperties[] = [
 	{
@@ -73,33 +74,14 @@ export async function executeAudioTranscription(
 	const mimeType = binaryData.mimeType;
 
 	// Get credentials
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-	try {
-		const credentials = await this.getCredentials('pollinationsApi');
-		if (credentials?.apiKey) {
-			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
-	} catch {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Pollinations API key is required. Please add your credentials.',
-			{ itemIndex },
-		);
-	}
+	const credentials = await this.getCredentials('pollinationsApi');
+	const headers: Record<string, string> = {
+		Authorization: `Bearer ${credentials.apiKey}`,
+		'Content-Type': 'application/json',
+	};
 
 	// Convert binary data to base64
-	let audioBase64: string;
-	if (typeof audioData === 'string') {
-		if (audioData.startsWith('data:')) {
-			// Remove data URL prefix if present
-			audioBase64 = audioData.split(',')[1];
-		} else {
-			audioBase64 = audioData;
-		}
-	} else {
-		// Assume it's a Buffer
-		audioBase64 = Buffer.from(audioData as Buffer).toString('base64');
-	}
+	const audioBase64 = extractBase64(audioData);
 
 	// Determine audio format from mimeType
 	const formatMap: Record<string, string> = {
@@ -162,11 +144,20 @@ export async function executeAudioTranscription(
 			/^Transcription:\s*/i,
 			/^Audio transcription:\s*/i,
 			/^Text:\s*/i,
-			/^["'']|["'']$/g, // Remove surrounding quotes
 		];
 
 		for (const prefix of prefixesToRemove) {
 			transcription = transcription.replace(prefix, '');
+		}
+
+		// Remove surrounding quotes (but not interior ones)
+		if (transcription.length >= 2) {
+			const first = transcription[0];
+			const last = transcription[transcription.length - 1];
+			const quoteChars = ['"', "'", '\u2018', '\u2019'];
+			if (quoteChars.includes(first) && quoteChars.includes(last)) {
+				transcription = transcription.slice(1, -1);
+			}
 		}
 
 		transcription = transcription.trim();

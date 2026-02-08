@@ -77,16 +77,12 @@ export async function executeAudioGeneration(
 	const voice = this.getNodeParameter('voice', itemIndex) as string;
 	const format = this.getNodeParameter('audioFormat', itemIndex) as string;
 
-	// Get credentials if available
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-	try {
-		const credentials = await this.getCredentials('pollinationsApi');
-		if (credentials?.apiKey) {
-			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
-	} catch {
-		// Credentials are optional, continue without them
-	}
+	// Get credentials
+	const credentials = await this.getCredentials('pollinationsApi');
+	const headers: Record<string, string> = {
+		Authorization: `Bearer ${credentials.apiKey}`,
+		'Content-Type': 'application/json',
+	};
 
 	// Build request body for TTS using chat completions
 	// Note: openai-audio is a chat model, not pure TTS. Using "Say:" prefix to make it read text verbatim.

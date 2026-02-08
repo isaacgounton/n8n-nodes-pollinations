@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { sanitizePromptForUrl } from '../utils';
 
 export const videoGenerationOperation: INodeProperties[] = [
 	{
@@ -196,20 +197,15 @@ export async function executeVideoGeneration(
 		queryParams.safe = 'true';
 	}
 
-	// Get credentials if available
-	const headers: Record<string, string> = {};
-	try {
-		const credentials = await this.getCredentials('pollinationsApi');
-		if (credentials?.apiKey) {
-			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
-	} catch {
-		// Credentials are optional, continue without them
-	}
+	// Get credentials
+	const credentials = await this.getCredentials('pollinationsApi');
+	const headers: Record<string, string> = {
+		Authorization: `Bearer ${credentials.apiKey}`,
+	};
 
 	// Build URL with query parameters
-	// Replace % with "percent" to avoid API 400 errors (encoded %25 in path causes issues)
-	const sanitizedPrompt = prompt.replace(/%/g, 'percent');
+	// Note: /image/ endpoint handles both image and video generation based on model
+	const sanitizedPrompt = sanitizePromptForUrl(prompt);
 	const queryString = new URLSearchParams(queryParams).toString();
 	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(sanitizedPrompt)}?${queryString}`;
 

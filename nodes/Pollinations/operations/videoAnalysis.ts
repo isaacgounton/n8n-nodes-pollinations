@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { extractBase64 } from '../utils';
 
 export const videoAnalysisOperation: INodeProperties[] = [
 	{
@@ -96,19 +97,11 @@ export async function executeVideoAnalysis(
 	const model = this.getNodeParameter('model', itemIndex) as string;
 
 	// Get credentials
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-	try {
-		const credentials = await this.getCredentials('pollinationsApi');
-		if (credentials?.apiKey) {
-			headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
-	} catch {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Pollinations API key is required. Please add your credentials.',
-			{ itemIndex },
-		);
-	}
+	const credentials = await this.getCredentials('pollinationsApi');
+	const headers: Record<string, string> = {
+		Authorization: `Bearer ${credentials.apiKey}`,
+		'Content-Type': 'application/json',
+	};
 
 	// Build content array based on input source
 	const content: Array<{ type: string; text?: string; video_url?: { url: string }; input_video?: { data: string; format: string } }> = [
@@ -149,14 +142,7 @@ export async function executeVideoAnalysis(
 		}
 
 		// Convert binary data to base64
-		let videoBase64: string;
-		if (typeof binaryData.data === 'string' && binaryData.data.startsWith('data:')) {
-			videoBase64 = binaryData.data.split(',')[1];
-		} else if (typeof binaryData.data === 'string') {
-			videoBase64 = binaryData.data;
-		} else {
-			videoBase64 = Buffer.from(binaryData.data as Buffer).toString('base64');
-		}
+		const videoBase64 = extractBase64(binaryData.data);
 
 		const mimeType = binaryData.mimeType || 'video/mp4';
 
