@@ -31,7 +31,7 @@ export class PollinationsApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: 'Bearer {{$credentials.apiKey}}',
+				Authorization: '=Bearer {{$credentials.apiKey}}',
 			},
 		},
 	};
@@ -42,5 +42,15 @@ export class PollinationsApi implements ICredentialType {
 			url: '/account/balance',
 			method: 'GET',
 		},
+		rules: [
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'error',
+					value: 'Authentication required',
+					message: 'Invalid API key. Please check your Pollinations Secret Key.',
+				},
+			},
+		],
 	};
 }

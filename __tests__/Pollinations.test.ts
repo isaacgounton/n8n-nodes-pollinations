@@ -125,7 +125,7 @@ describe('PollinationsApi Credentials', () => {
 			type: 'generic',
 			properties: {
 				headers: {
-					Authorization: 'Bearer {{$credentials.apiKey}}',
+					Authorization: '=Bearer {{$credentials.apiKey}}',
 				},
 			},
 		});
@@ -137,6 +137,8 @@ describe('PollinationsApi Credentials', () => {
 			url: '/account/balance',
 			method: 'GET',
 		});
+		expect(cred.test.rules).toBeDefined();
+		expect(cred.test.rules).toHaveLength(1);
 	});
 });
 
