@@ -131,10 +131,10 @@ describe('PollinationsApi Credentials', () => {
 		});
 	});
 
-	it('should test credentials against text/models endpoint', () => {
+	it('should test credentials against authenticated endpoint', () => {
 		expect(cred.test.request).toEqual({
 			baseURL: 'https://gen.pollinations.ai',
-			url: '/text/models',
+			url: '/account/balance',
 			method: 'GET',
 		});
 	});
