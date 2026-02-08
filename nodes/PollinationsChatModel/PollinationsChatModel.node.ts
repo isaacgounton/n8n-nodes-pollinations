@@ -47,6 +47,7 @@ class PollinationsChatModelInstance {
 	topP?: number;
 	baseURL: string;
 	apiKey: string;
+	private httpPost: (url: string, body: Record<string, unknown>) => Promise<unknown>;
 
 	// LangChain Runnable interface properties
 	lc_namespace = ['langchain', 'chat_models', 'pollinations'];
@@ -59,6 +60,7 @@ class PollinationsChatModelInstance {
 		maxTokens?: number;
 		topP?: number;
 		apiKey: string;
+		httpPost?: (url: string, body: Record<string, unknown>) => Promise<unknown>;
 	}) {
 		this.modelName = fields.modelName;
 		this.temperature = fields.temperature ?? 1;
@@ -66,6 +68,31 @@ class PollinationsChatModelInstance {
 		this.topP = fields.topP;
 		this.baseURL = 'https://gen.pollinations.ai';
 		this.apiKey = fields.apiKey;
+
+		// Use provided httpPost (from n8n helpers) or fall back to fetch
+		const apiKey = fields.apiKey;
+		this.httpPost = fields.httpPost ?? (async (url: string, body: Record<string, unknown>) => {
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${apiKey}`,
+				},
+				body: JSON.stringify(body),
+			});
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new ApplicationError(`Pollinations API error: ${response.status} - ${errorText}`);
+			}
+			return response.json();
+		});
+
+		// Bind public methods to preserve 'this' when called by n8n's AI framework
+		this.invoke = this.invoke.bind(this);
+		this._generate = this._generate.bind(this);
+		this.batch = this.batch.bind(this);
+		this.bindTools = this.bindTools.bind(this);
+		this.withConfig = this.withConfig.bind(this);
 	}
 
 	_llmType(): string {
@@ -204,6 +231,7 @@ class PollinationsChatModelInstance {
 			maxTokens: config.maxTokens as number ?? this.maxTokens,
 			topP: config.topP as number ?? this.topP,
 			apiKey: this.apiKey,
+			httpPost: this.httpPost,
 		});
 		// Preserve bound tools from the original instance
 		const currentTools = (this as PollinationsChatModelInstance & { boundTools?: unknown[] }).boundTools;
@@ -234,26 +262,11 @@ class PollinationsChatModelInstance {
 		const boundTools = (this as PollinationsChatModelInstance & { boundTools?: unknown[] }).boundTools;
 		if (boundTools && Array.isArray(boundTools) && boundTools.length > 0) {
 			body.tools = boundTools;
-			// Enable tool calling when tools are available
 			body.tool_choice = 'auto';
 			body.parallel_tool_calls = true;
 		}
 
-		const response = await fetch(`${this.baseURL}/v1/chat/completions`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${this.apiKey}`,
-			},
-			body: JSON.stringify(body),
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new ApplicationError(`Pollinations API error: ${response.status} - ${errorText}`);
-		}
-
-		const data = (await response.json()) as {
+		const data = (await this.httpPost(`${this.baseURL}/v1/chat/completions`, body)) as {
 			choices?: Array<{ message?: { content?: string; tool_calls?: unknown[] } }>;
 		};
 
@@ -395,6 +408,12 @@ export class PollinationsChatModel implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('pollinationsApi');
+		const apiKey = credentials.apiKey as string;
+
+		if (!apiKey) {
+			throw new ApplicationError('Pollinations API key is missing. Please check your credentials.');
+		}
+
 		const model = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature?: number;
@@ -402,12 +421,27 @@ export class PollinationsChatModel implements INodeType {
 			topP?: number;
 		};
 
+		// Use n8n's httpRequest with the API key captured in closure
+		const helpers = this.helpers;
+		const httpPost = async (url: string, body: Record<string, unknown>) => {
+			return helpers.httpRequest({
+				method: 'POST',
+				url,
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${apiKey}`,
+				},
+				body,
+			});
+		};
+
 		const chatModel = new PollinationsChatModelInstance({
 			modelName: model,
 			temperature: options.temperature,
 			maxTokens: options.maxTokens,
 			topP: options.topP,
-			apiKey: credentials.apiKey as string,
+			apiKey,
+			httpPost,
 		});
 
 		return {
