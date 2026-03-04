@@ -211,7 +211,7 @@ class PollinationsChatModelInstance {
 	}
 
 	pipe(nextRunnable: unknown): unknown {
-		const pipeFunction = async (input: unknown) => {
+		const invokeNext = async (input: unknown) => {
 			const output = await this.invoke(input);
 			if (typeof nextRunnable === 'function') {
 				return await nextRunnable(output);
@@ -221,7 +221,25 @@ class PollinationsChatModelInstance {
 			}
 			return output;
 		};
-		return pipeFunction;
+
+		// Return a runnable-like object so downstream parser wrappers can call .invoke()
+		// instead of receiving a bare function.
+		return {
+			invoke: invokeNext,
+			batch: async (inputs: unknown[]) => Promise.all(inputs.map(input => invokeNext(input))),
+			pipe: (next: unknown) => ({
+				invoke: async (input: unknown) => {
+					const currentOutput = await invokeNext(input);
+					if (typeof next === 'function') {
+						return await next(currentOutput);
+					}
+					if (next && typeof next === 'object' && 'invoke' in next) {
+						return await (next as { invoke: (value: unknown) => Promise<unknown> }).invoke(currentOutput);
+					}
+					return currentOutput;
+				},
+			}),
+		};
 	}
 
 	withConfig(config: Record<string, unknown>): this {
