@@ -356,21 +356,20 @@ export class Pollinations implements INodeType {
 					const models = (await this.helpers.httpRequest({
 						method: 'GET',
 						url: 'https://gen.pollinations.ai/audio/models',
-					})) as Array<{ name: string; task?: string; capabilities?: string[] }>;
+					})) as Array<{ name: string; aliases?: string[]; input_modalities?: string[]; output_modalities?: string[] }>;
 
+					// STT models: input audio, output text
 					return models
-						.filter((m) => m.task === 'stt' || m.capabilities?.includes('transcription'))
+						.filter((m) => m.input_modalities?.includes('audio') && m.output_modalities?.includes('text'))
 						.map((m) => ({
 							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
 							value: m.name,
 						}))
 						.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
-					// Fallback: known transcription models
 					return [
 						{ name: 'Scribe', value: 'scribe' },
-						{ name: 'Whisper 1', value: 'whisper-1' },
-						{ name: 'Whisper Large V3', value: 'whisper-large-v3' },
+						{ name: 'Whisper', value: 'whisper' },
 					];
 				}
 			},
@@ -379,20 +378,19 @@ export class Pollinations implements INodeType {
 					const models = (await this.helpers.httpRequest({
 						method: 'GET',
 						url: 'https://gen.pollinations.ai/audio/models',
-					})) as Array<{ name: string; task?: string; capabilities?: string[] }>;
+					})) as Array<{ name: string; aliases?: string[]; input_modalities?: string[]; output_modalities?: string[]; voices?: string[] }>;
 
+					// TTS models: input text, output audio, and have voices
 					return models
-						.filter((m) => m.task === 'tts' || m.capabilities?.includes('tts'))
+						.filter((m) => m.input_modalities?.includes('text') && m.output_modalities?.includes('audio') && m.voices && m.voices.length > 0)
 						.map((m) => ({
 							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
 							value: m.name,
 						}))
 						.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
-					// Fallback: known TTS models
 					return [
 						{ name: 'Elevenlabs', value: 'elevenlabs' },
-						{ name: 'Openai Tts', value: 'openai-tts' },
 						{ name: 'Qwen3 Tts', value: 'qwen3-tts' },
 					];
 				}
@@ -402,17 +400,17 @@ export class Pollinations implements INodeType {
 					const models = (await this.helpers.httpRequest({
 						method: 'GET',
 						url: 'https://gen.pollinations.ai/audio/models',
-					})) as Array<{ name: string; task?: string; capabilities?: string[] }>;
+					})) as Array<{ name: string; aliases?: string[]; input_modalities?: string[]; output_modalities?: string[]; voices?: string[] }>;
 
+					// Music models: input text, output audio, no voices (not TTS)
 					return models
-						.filter((m) => m.task === 'music' || m.capabilities?.includes('music'))
+						.filter((m) => m.input_modalities?.includes('text') && m.output_modalities?.includes('audio') && (!m.voices || m.voices.length === 0))
 						.map((m) => ({
 							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
 							value: m.name,
 						}))
 						.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
-					// Fallback: known music models
 					return [
 						{ name: 'Elevenmusic', value: 'elevenmusic' },
 						{ name: 'Suno', value: 'suno' },
