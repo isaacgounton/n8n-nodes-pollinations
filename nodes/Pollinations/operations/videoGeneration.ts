@@ -89,17 +89,17 @@ export const videoGenerationOperation: INodeProperties[] = [
 					{ name: '9:16', value: '9:16' },
 				],
 				default: '16:9',
-				description: 'Video aspect ratio (veo, seedance)',
+				description: 'Video aspect ratio',
 			},
 			{
 				displayName: 'Duration (Seconds)',
 				name: 'duration',
 				type: 'number',
 				default: 4,
-				description: 'Video duration in seconds (veo: 4, 6, 8; seedance: 2-10)',
+				description: 'Video duration in seconds (veo: 4/6/8, seedance: 2-10, wan: 2-15)',
 				typeOptions: {
 					minValue: 1,
-					maxValue: 10,
+					maxValue: 15,
 				},
 			},
 			{
@@ -107,28 +107,21 @@ export const videoGenerationOperation: INodeProperties[] = [
 				name: 'audio',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to enable audio generation for video (veo only)',
+				description: 'Whether to enable audio generation for video',
 			},
 			{
 				displayName: 'Input Image URL',
-				name: 'imageUrl',
+				name: 'image',
 				type: 'string',
 				default: '',
-				description: 'URL of input image(s). For veo: image[0]=first frame, image[1]=last frame (interpolation).',
+				description: 'URL of input image(s) for image-to-video. For veo: image[0]=first frame, image[1]=last frame.',
 			},
 			{
 				displayName: 'Negative Prompt',
 				name: 'negative_prompt',
 				type: 'string',
-				default: 'worst quality, blurry',
+				default: '',
 				description: 'What to avoid in the generated video',
-			},
-			{
-				displayName: 'Private',
-				name: 'private',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to keep the generation private',
 			},
 			{
 				displayName: 'Safe Mode',
@@ -158,8 +151,7 @@ export async function executeVideoGeneration(
 	const height = this.getNodeParameter('height', itemIndex) as number;
 	const additionalOptions = this.getNodeParameter('videoAdditionalOptions', itemIndex, {}) as {
 		seed?: number;
-		private?: boolean;
-		imageUrl?: string;
+		image?: string;
 		duration?: number;
 		aspectRatio?: string;
 		audio?: boolean;
@@ -177,25 +169,12 @@ export async function executeVideoGeneration(
 	if (additionalOptions.seed !== undefined && additionalOptions.seed !== -1) {
 		queryParams.seed = additionalOptions.seed.toString();
 	}
-	if (additionalOptions.private) queryParams.private = 'true';
-	if (additionalOptions.imageUrl) {
-		queryParams.image = additionalOptions.imageUrl;
-	}
-	if (additionalOptions.duration) {
-		queryParams.duration = additionalOptions.duration.toString();
-	}
-	if (additionalOptions.aspectRatio) {
-		queryParams.aspectRatio = additionalOptions.aspectRatio;
-	}
-	if (additionalOptions.audio) {
-		queryParams.audio = 'true';
-	}
-	if (additionalOptions.negative_prompt) {
-		queryParams.negative_prompt = additionalOptions.negative_prompt;
-	}
-	if (additionalOptions.safe) {
-		queryParams.safe = 'true';
-	}
+	if (additionalOptions.image) queryParams.image = additionalOptions.image;
+	if (additionalOptions.duration) queryParams.duration = additionalOptions.duration.toString();
+	if (additionalOptions.aspectRatio) queryParams.aspectRatio = additionalOptions.aspectRatio;
+	if (additionalOptions.audio) queryParams.audio = 'true';
+	if (additionalOptions.negative_prompt) queryParams.negative_prompt = additionalOptions.negative_prompt;
+	if (additionalOptions.safe) queryParams.safe = 'true';
 
 	// Get credentials
 	const credentials = await this.getCredentials('pollinationsApi');
@@ -203,11 +182,10 @@ export async function executeVideoGeneration(
 		Authorization: `Bearer ${credentials.apiKey}`,
 	};
 
-	// Build URL with query parameters
-	// Note: /image/ endpoint handles both image and video generation based on model
+	// Use the dedicated /video/ endpoint
 	const sanitizedPrompt = sanitizePromptForUrl(prompt);
 	const queryString = new URLSearchParams(queryParams).toString();
-	const url = `https://gen.pollinations.ai/image/${encodeURIComponent(sanitizedPrompt)}?${queryString}`;
+	const url = `https://gen.pollinations.ai/video/${encodeURIComponent(sanitizedPrompt)}?${queryString}`;
 
 	try {
 		const response = await this.helpers.httpRequest({
@@ -216,6 +194,7 @@ export async function executeVideoGeneration(
 			headers,
 			encoding: 'arraybuffer',
 			returnFullResponse: true,
+			timeout: 300000, // 5 min timeout for video generation
 		});
 
 		const contentType = response.headers['content-type'] as string;

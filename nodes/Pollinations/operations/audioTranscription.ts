@@ -17,22 +17,6 @@ export const audioTranscriptionOperation: INodeProperties[] = [
 		description: 'Name of the binary property containing the audio file',
 	},
 	{
-		displayName: 'Prompt',
-		name: 'prompt',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['audio'],
-				operation: ['audioTranscription'],
-			},
-		},
-		default: 'Transcribe this audio',
-		description: 'Instructions for the AI (e.g., "Transcribe this audio", "What language is this?", "Summarize this audio")',
-		typeOptions: {
-			rows: 2,
-		},
-	},
-	{
 		displayName: 'Model Name or ID',
 		name: 'model',
 		type: 'options',
@@ -48,6 +32,50 @@ export const audioTranscriptionOperation: INodeProperties[] = [
 		default: '',
 		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 	},
+	{
+		displayName: 'Additional Options',
+		name: 'transcriptionOptions',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['audio'],
+				operation: ['audioTranscription'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'string',
+				default: '',
+				description: 'Language of the audio in ISO-639-1 format (e.g., "en", "fr", "de")',
+			},
+			{
+				displayName: 'Prompt',
+				name: 'prompt',
+				type: 'string',
+				default: '',
+				description: 'Optional text to guide the transcription style or provide context',
+				typeOptions: {
+					rows: 2,
+				},
+			},
+			{
+				displayName: 'Temperature',
+				name: 'temperature',
+				type: 'number',
+				default: 0,
+				description: 'Sampling temperature between 0 and 1 (lower is more deterministic)',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 1,
+					numberPrecision: 1,
+				},
+			},
+		],
+	},
 ];
 
 export async function executeAudioTranscription(
@@ -55,8 +83,12 @@ export async function executeAudioTranscription(
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
 	const binaryPropertyName = this.getNodeParameter('binaryProperty', itemIndex) as string;
-	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const model = this.getNodeParameter('model', itemIndex) as string;
+	const options = this.getNodeParameter('transcriptionOptions', itemIndex, {}) as {
+		language?: string;
+		prompt?: string;
+		temperature?: number;
+	};
 
 	// Get binary data from input
 	const inputData = this.getInputData();
@@ -71,103 +103,57 @@ export async function executeAudioTranscription(
 	}
 
 	const audioData = binaryData.data;
-	const mimeType = binaryData.mimeType;
+	const mimeType = binaryData.mimeType || 'audio/mpeg';
 
 	// Get credentials
 	const credentials = await this.getCredentials('pollinationsApi');
-	const headers: Record<string, string> = {
-		Authorization: `Bearer ${credentials.apiKey}`,
-		'Content-Type': 'application/json',
-	};
 
-	// Convert binary data to base64
+	// Convert binary data to base64 then to Buffer for multipart upload
 	const audioBase64 = extractBase64(audioData);
+	const audioBuffer = Buffer.from(audioBase64, 'base64');
 
-	// Determine audio format from mimeType
-	const formatMap: Record<string, string> = {
+	// Determine file extension from mimeType
+	const extMap: Record<string, string> = {
 		'audio/mpeg': 'mp3',
 		'audio/mp3': 'mp3',
 		'audio/wav': 'wav',
 		'audio/wave': 'wav',
 		'audio/flac': 'flac',
 		'audio/opus': 'opus',
-		'audio/pcm': 'pcm16',
+		'audio/webm': 'webm',
+		'audio/mp4': 'mp4',
+		'audio/x-m4a': 'm4a',
+		'audio/m4a': 'm4a',
+		'video/mp4': 'mp4',
 	};
+	const ext = extMap[mimeType] || 'mp3';
 
-	const format = formatMap[mimeType] || 'mp3';
-
-	// Build request body with system prompt to get clean transcription
-	const body = {
-		model,
-		messages: [
-			{
-				role: 'system',
-				content: 'You are a transcriber. Return ONLY the exact text spoken in the audio, without any introduction, commentary, or formatting. Do not include phrases like "Here is the transcription" or quotes around the text.',
-			},
-			{
-				role: 'user',
-				content: [
-					{
-						type: 'text',
-						text: prompt || 'Transcribe this audio exactly as spoken.',
-					},
-					{
-						type: 'input_audio',
-						input_audio: {
-							data: audioBase64,
-							format,
-						},
-					},
-				],
-			},
-		],
-	};
+	// Build multipart/form-data body
+	const formData = new FormData();
+	formData.append('file', new Blob([audioBuffer], { type: mimeType }), `audio.${ext}`);
+	if (model) formData.append('model', model);
+	if (options.language) formData.append('language', options.language);
+	if (options.prompt) formData.append('prompt', options.prompt);
+	if (options.temperature !== undefined) formData.append('temperature', options.temperature.toString());
 
 	try {
 		const response = await this.helpers.httpRequest({
 			method: 'POST',
-			url: 'https://gen.pollinations.ai/v1/chat/completions',
-			headers,
-			body,
-			json: true,
+			url: 'https://gen.pollinations.ai/v1/audio/transcriptions',
+			headers: {
+				Authorization: `Bearer ${credentials.apiKey}`,
+			},
+			body: formData,
 		});
 
-		let transcription = response.choices?.[0]?.message?.content;
-		if (!transcription) {
-			throw new Error('No transcription in response');
-		}
-
-		// Post-process: remove common conversational prefixes
-		const prefixesToRemove = [
-			/^Here is the transcription[^:]*:\s*/i,
-			/^The transcription is:\s*/i,
-			/^Transcription:\s*/i,
-			/^Audio transcription:\s*/i,
-			/^Text:\s*/i,
-		];
-
-		for (const prefix of prefixesToRemove) {
-			transcription = transcription.replace(prefix, '');
-		}
-
-		// Remove surrounding quotes (but not interior ones)
-		if (transcription.length >= 2) {
-			const first = transcription[0];
-			const last = transcription[transcription.length - 1];
-			const quoteChars = ['"', "'", '\u2018', '\u2019'];
-			if (quoteChars.includes(first) && quoteChars.includes(last)) {
-				transcription = transcription.slice(1, -1);
-			}
-		}
-
-		transcription = transcription.trim();
+		const transcription = typeof response === 'string' ? response : (response.text || '');
 
 		return {
 			json: {
 				transcription,
 				model,
-				prompt,
-				audioFormat: format,
+				language: response.language || options.language || '',
+				duration: response.duration || null,
 			},
 			pairedItem: { item: itemIndex },
 		};

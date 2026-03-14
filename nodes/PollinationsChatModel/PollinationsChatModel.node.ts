@@ -45,6 +45,7 @@ class PollinationsChatModelInstance {
 	temperature: number;
 	maxTokens?: number;
 	topP?: number;
+	reasoningEffort?: string;
 	baseURL: string;
 	apiKey: string;
 	private httpPost: (url: string, body: Record<string, unknown>) => Promise<unknown>;
@@ -59,6 +60,7 @@ class PollinationsChatModelInstance {
 		temperature?: number;
 		maxTokens?: number;
 		topP?: number;
+		reasoningEffort?: string;
 		apiKey: string;
 		httpPost?: (url: string, body: Record<string, unknown>) => Promise<unknown>;
 	}) {
@@ -66,6 +68,7 @@ class PollinationsChatModelInstance {
 		this.temperature = fields.temperature ?? 1;
 		this.maxTokens = fields.maxTokens;
 		this.topP = fields.topP;
+		this.reasoningEffort = fields.reasoningEffort;
 		this.baseURL = 'https://gen.pollinations.ai';
 		this.apiKey = fields.apiKey;
 
@@ -248,6 +251,7 @@ class PollinationsChatModelInstance {
 			temperature: config.temperature as number ?? this.temperature,
 			maxTokens: config.maxTokens as number ?? this.maxTokens,
 			topP: config.topP as number ?? this.topP,
+			reasoningEffort: config.reasoningEffort as string ?? this.reasoningEffort,
 			apiKey: this.apiKey,
 			httpPost: this.httpPost,
 		});
@@ -274,6 +278,7 @@ class PollinationsChatModelInstance {
 			temperature: this.temperature,
 			...(this.maxTokens && { max_tokens: this.maxTokens }),
 			...(this.topP !== undefined && { top_p: this.topP }),
+			...(this.reasoningEffort && this.reasoningEffort !== 'none' && { reasoning_effort: this.reasoningEffort }),
 		};
 
 		// Add tools if available
@@ -349,6 +354,26 @@ export class PollinationsChatModel implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Max Tokens',
+						name: 'maxTokens',
+						type: 'number',
+						default: 1000,
+						description: 'Maximum number of tokens to generate',
+					},
+					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoningEffort',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Low', value: 'low' },
+							{ name: 'Medium', value: 'medium' },
+							{ name: 'High', value: 'high' },
+						],
+						default: 'none',
+						description: 'Reasoning effort for thinking-capable models (deepseek, etc.)',
+					},
+					{
 						displayName: 'Temperature',
 						name: 'temperature',
 						type: 'number',
@@ -359,13 +384,6 @@ export class PollinationsChatModel implements INodeType {
 							maxValue: 2,
 							numberPrecision: 1,
 						},
-					},
-					{
-						displayName: 'Max Tokens',
-						name: 'maxTokens',
-						type: 'number',
-						default: 1000,
-						description: 'Maximum number of tokens to generate',
 					},
 					{
 						displayName: 'Top P',
@@ -412,11 +430,17 @@ export class PollinationsChatModel implements INodeType {
 					// Fallback models when API is unreachable
 					return [
 						{ name: 'Claude', value: 'claude' },
+						{ name: 'Claude Fast', value: 'claude-fast' },
 						{ name: 'DeepSeek', value: 'deepseek' },
 						{ name: 'Gemini', value: 'gemini' },
+						{ name: 'Gemini Large', value: 'gemini-large' },
+						{ name: 'Gemini Search', value: 'gemini-search' },
 						{ name: 'Grok', value: 'grok' },
 						{ name: 'Mistral', value: 'mistral' },
 						{ name: 'OpenAI', value: 'openai' },
+						{ name: 'OpenAI Large', value: 'openai-large' },
+						{ name: 'Perplexity Fast', value: 'perplexity-fast' },
+						{ name: 'Perplexity Reasoning', value: 'perplexity-reasoning' },
 						{ name: 'Qwen Coder', value: 'qwen-coder' },
 					];
 				}
@@ -437,6 +461,7 @@ export class PollinationsChatModel implements INodeType {
 			temperature?: number;
 			maxTokens?: number;
 			topP?: number;
+			reasoningEffort?: string;
 		};
 
 		// Use n8n's httpRequest with the API key captured in closure
@@ -458,6 +483,7 @@ export class PollinationsChatModel implements INodeType {
 			temperature: options.temperature,
 			maxTokens: options.maxTokens,
 			topP: options.topP,
+			reasoningEffort: options.reasoningEffort,
 			apiKey,
 			httpPost,
 		});

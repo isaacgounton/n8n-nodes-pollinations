@@ -12,9 +12,18 @@ import { videoGenerationOperation, executeVideoGeneration } from './operations/v
 import { textGenerationOperation, executeTextGeneration } from './operations/textGeneration';
 import { audioGenerationOperation, executeAudioGeneration } from './operations/audioGeneration';
 import { audioTranscriptionOperation, executeAudioTranscription } from './operations/audioTranscription';
+import { musicGenerationOperation, executeMusicGeneration } from './operations/musicGeneration';
 import { imageAnalysisOperation, executeImageAnalysis } from './operations/imageAnalysis';
 import { videoAnalysisOperation, executeVideoAnalysis } from './operations/videoAnalysis';
 import { imageToImageOperation, executeImageToImage } from './operations/imageToImage';
+import {
+	mediaUploadOperation,
+	mediaRetrieveOperation,
+	mediaDeleteOperation,
+	executeMediaUpload,
+	executeMediaRetrieve,
+	executeMediaDelete,
+} from './operations/mediaStorage';
 
 export class Pollinations implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +33,7 @@ export class Pollinations implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
-		description: 'Generate images, videos, text, and audio using Pollinations.ai',
+		description: 'Generate images, videos, text, audio, and music using Pollinations.ai',
 		defaults: {
 			name: 'Pollinations',
 		},
@@ -47,12 +56,17 @@ export class Pollinations implements INodeType {
 					{
 						name: 'Audio',
 						value: 'audio',
-						description: 'Audio generation and transcription',
+						description: 'Audio generation, music, and transcription',
 					},
 					{
 						name: 'Image',
 						value: 'image',
 						description: 'Image generation, analysis, and editing',
+					},
+					{
+						name: 'Storage',
+						value: 'storage',
+						description: 'Upload, retrieve, and delete media files',
 					},
 					{
 						name: 'Text',
@@ -81,14 +95,20 @@ export class Pollinations implements INodeType {
 					{
 						name: 'Audio Generation',
 						value: 'audioGeneration',
-						description: 'Generate audio/speech from text',
+						description: 'Generate speech from text (TTS)',
 						action: 'Generate audio',
 					},
 					{
 						name: 'Audio Transcription',
 						value: 'audioTranscription',
-						description: 'Transcribe audio to text',
+						description: 'Transcribe audio to text (STT)',
 						action: 'Transcribe audio',
+					},
+					{
+						name: 'Music Generation',
+						value: 'musicGeneration',
+						description: 'Generate music and instrumental audio',
+						action: 'Generate music',
 					},
 				],
 				default: 'audioGeneration',
@@ -124,6 +144,38 @@ export class Pollinations implements INodeType {
 					},
 				],
 				default: 'imageGeneration',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['storage'],
+					},
+				},
+				options: [
+					{
+						name: 'Delete',
+						value: 'mediaDelete',
+						description: 'Delete a media file by hash (owner only)',
+						action: 'Delete media',
+					},
+					{
+						name: 'Retrieve',
+						value: 'mediaRetrieve',
+						description: 'Retrieve a media file by hash',
+						action: 'Retrieve media',
+					},
+					{
+						name: 'Upload',
+						value: 'mediaUpload',
+						description: 'Upload a file to Pollinations media storage (max 10MB)',
+						action: 'Upload media',
+					},
+				],
+				default: 'mediaUpload',
 			},
 			{
 				displayName: 'Operation',
@@ -176,9 +228,13 @@ export class Pollinations implements INodeType {
 			...textGenerationOperation,
 			...audioGenerationOperation,
 			...audioTranscriptionOperation,
+			...musicGenerationOperation,
 			...imageAnalysisOperation,
 			...videoAnalysisOperation,
 			...imageToImageOperation,
+			...mediaUploadOperation,
+			...mediaRetrieveOperation,
+			...mediaDeleteOperation,
 		],
 	};
 
@@ -220,7 +276,7 @@ export class Pollinations implements INodeType {
 					return [];
 				}
 			},
-				async getTextModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getTextModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
 					const response = (await this.helpers.httpRequest({
 						method: 'GET',
@@ -299,18 +355,68 @@ export class Pollinations implements INodeType {
 				try {
 					const models = (await this.helpers.httpRequest({
 						method: 'GET',
-						url: 'https://gen.pollinations.ai/text/models',
-					})) as Array<{ name: string; input_modalities: string[] }>;
+						url: 'https://gen.pollinations.ai/audio/models',
+					})) as Array<{ name: string; task?: string; capabilities?: string[] }>;
 
 					return models
-						.filter((m) => m.input_modalities?.includes('audio'))
+						.filter((m) => m.task === 'stt' || m.capabilities?.includes('transcription'))
 						.map((m) => ({
 							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
 							value: m.name,
 						}))
 						.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
-					return [];
+					// Fallback: known transcription models
+					return [
+						{ name: 'Scribe', value: 'scribe' },
+						{ name: 'Whisper 1', value: 'whisper-1' },
+						{ name: 'Whisper Large V3', value: 'whisper-large-v3' },
+					];
+				}
+			},
+			async getAudioModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const models = (await this.helpers.httpRequest({
+						method: 'GET',
+						url: 'https://gen.pollinations.ai/audio/models',
+					})) as Array<{ name: string; task?: string; capabilities?: string[] }>;
+
+					return models
+						.filter((m) => m.task === 'tts' || m.capabilities?.includes('tts'))
+						.map((m) => ({
+							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
+							value: m.name,
+						}))
+						.sort((a, b) => a.name.localeCompare(b.name));
+				} catch {
+					// Fallback: known TTS models
+					return [
+						{ name: 'Elevenlabs', value: 'elevenlabs' },
+						{ name: 'Openai Tts', value: 'openai-tts' },
+						{ name: 'Qwen3 Tts', value: 'qwen3-tts' },
+					];
+				}
+			},
+			async getMusicModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const models = (await this.helpers.httpRequest({
+						method: 'GET',
+						url: 'https://gen.pollinations.ai/audio/models',
+					})) as Array<{ name: string; task?: string; capabilities?: string[] }>;
+
+					return models
+						.filter((m) => m.task === 'music' || m.capabilities?.includes('music'))
+						.map((m) => ({
+							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
+							value: m.name,
+						}))
+						.sort((a, b) => a.name.localeCompare(b.name));
+				} catch {
+					// Fallback: known music models
+					return [
+						{ name: 'Elevenmusic', value: 'elevenmusic' },
+						{ name: 'Suno', value: 'suno' },
+					];
 				}
 			},
 		},
@@ -342,6 +448,9 @@ export class Pollinations implements INodeType {
 					case 'audioTranscription':
 						result = await executeAudioTranscription.call(this, itemIndex);
 						break;
+					case 'musicGeneration':
+						result = await executeMusicGeneration.call(this, itemIndex);
+						break;
 					case 'imageAnalysis':
 						result = await executeImageAnalysis.call(this, itemIndex);
 						break;
@@ -350,6 +459,15 @@ export class Pollinations implements INodeType {
 						break;
 					case 'imageToImage':
 						result = await executeImageToImage.call(this, itemIndex);
+						break;
+					case 'mediaUpload':
+						result = await executeMediaUpload.call(this, itemIndex);
+						break;
+					case 'mediaRetrieve':
+						result = await executeMediaRetrieve.call(this, itemIndex);
+						break;
+					case 'mediaDelete':
+						result = await executeMediaDelete.call(this, itemIndex);
 						break;
 					default:
 						throw new NodeOperationError(
@@ -376,4 +494,3 @@ export class Pollinations implements INodeType {
 		return [returnData];
 	}
 }
-

@@ -21,18 +21,18 @@ describe('Pollinations Node', () => {
 		]);
 	});
 
-	it('should define all four resource types', () => {
+	it('should define all five resource types', () => {
 		const resourceProperty = description.properties.find(
 			(p) => p.name === 'resource',
 		);
 		expect(resourceProperty).toBeDefined();
 		const options = (resourceProperty as { options: Array<{ value: string }> }).options;
 		const values = options.map((o) => o.value);
-		expect(values).toEqual(expect.arrayContaining(['audio', 'image', 'text', 'video']));
-		expect(values).toHaveLength(4);
+		expect(values).toEqual(expect.arrayContaining(['audio', 'image', 'storage', 'text', 'video']));
+		expect(values).toHaveLength(5);
 	});
 
-	it('should define all eight operations across resources', () => {
+	it('should define all twelve operations across resources', () => {
 		const operationProperties = description.properties.filter(
 			(p) => p.name === 'operation',
 		);
@@ -51,8 +51,12 @@ describe('Pollinations Node', () => {
 			'textGeneration',
 			'audioGeneration',
 			'audioTranscription',
+			'musicGeneration',
+			'mediaUpload',
+			'mediaRetrieve',
+			'mediaDelete',
 		]));
-		expect(allOperationValues).toHaveLength(8);
+		expect(allOperationValues).toHaveLength(12);
 	});
 
 	it('should have loadOptions methods for all dynamic model selectors', () => {
@@ -66,6 +70,8 @@ describe('Pollinations Node', () => {
 			'getImageToImageModels',
 			'getVideoAnalysisModels',
 			'getTranscriptionModels',
+			'getAudioModels',
+			'getMusicModels',
 		]));
 	});
 
@@ -100,6 +106,14 @@ describe('PollinationsChatModel Node', () => {
 		const propNames = description.properties.map((p) => p.name);
 		expect(propNames).toContain('model');
 		expect(propNames).toContain('options');
+	});
+
+	it('should have reasoning effort in options', () => {
+		const optionsProp = description.properties.find((p) => p.name === 'options');
+		expect(optionsProp).toBeDefined();
+		const subOptions = (optionsProp as { options: Array<{ name: string }> }).options;
+		const subOptionNames = subOptions.map((o) => o.name);
+		expect(subOptionNames).toContain('reasoningEffort');
 	});
 
 	it('should have getModels loadOptions method', () => {
