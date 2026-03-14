@@ -149,16 +149,19 @@ export async function executeAudioTranscription(
 				'Content-Type': contentType,
 			},
 			body: multipartBody,
+			json: false,
 		});
 
-		const transcription = typeof response === 'string' ? response : (response.text || '');
+		// Parse response (json: false returns a string)
+		const parsed = typeof response === 'string' ? (() => { try { return JSON.parse(response); } catch { return { text: response }; } })() : response;
+		const transcription = parsed.text || (typeof response === 'string' ? response : '');
 
 		return {
 			json: {
 				transcription,
 				model,
-				language: response.language || options.language || '',
-				duration: response.duration || null,
+				language: parsed.language || options.language || '',
+				duration: parsed.duration || null,
 			},
 			pairedItem: { item: itemIndex },
 		};

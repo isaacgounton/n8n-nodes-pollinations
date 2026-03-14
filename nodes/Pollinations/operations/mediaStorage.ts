@@ -103,11 +103,15 @@ export async function executeMediaUpload(
 				'Content-Type': contentType,
 			},
 			body: multipartBody,
+			json: false,
 		});
+
+		// Parse response (json: false returns a string)
+		const parsed = typeof response === 'string' ? (() => { try { return JSON.parse(response); } catch { return { result: response }; } })() : response;
 
 		return {
 			json: {
-				...(typeof response === 'object' ? response : { result: response }),
+				...parsed,
 				fileName,
 				mimeType,
 			},
