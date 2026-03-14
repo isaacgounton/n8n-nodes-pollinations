@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { extractBase64, buildMultipartBody } from '../utils';
+import { extractBase64 } from '../utils';
 
 export const mediaUploadOperation: INodeProperties[] = [
 	{
@@ -90,24 +90,23 @@ export async function executeMediaUpload(
 	const fileName = binaryData.fileName || 'file';
 
 	try {
-		const { body: multipartBody, contentType } = buildMultipartBody(
-			{},
-			{ fieldName: 'file', buffer: fileBuffer, fileName, mimeType },
-		);
-
-		const response = await this.helpers.httpRequest({
+		// Use raw binary upload — send the file directly as the request body
+		const fetchResponse = await fetch('https://media.pollinations.ai/upload', {
 			method: 'POST',
-			url: 'https://media.pollinations.ai/upload',
 			headers: {
 				Authorization: `Bearer ${credentials.apiKey}`,
-				'Content-Type': contentType,
+				'Content-Type': mimeType,
+				'X-File-Name': fileName,
 			},
-			body: multipartBody,
-			json: false,
+			body: fileBuffer,
 		});
 
-		// Parse response (json: false returns a string)
-		const parsed = typeof response === 'string' ? (() => { try { return JSON.parse(response); } catch { return { result: response }; } })() : response;
+		if (!fetchResponse.ok) {
+			const errorText = await fetchResponse.text();
+			throw new Error(`HTTP ${fetchResponse.status}: ${errorText}`);
+		}
+
+		const parsed = await fetchResponse.json() as Record<string, unknown>;
 
 		return {
 			json: {

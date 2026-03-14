@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { extractBase64, buildMultipartBody } from '../utils';
+import { extractBase64 } from '../utils';
 
 export const audioTranscriptionOperation: INodeProperties[] = [
 	{
@@ -108,7 +108,7 @@ export async function executeAudioTranscription(
 	// Get credentials
 	const credentials = await this.getCredentials('pollinationsApi');
 
-	// Convert binary data to base64 then to Buffer for multipart upload
+	// Convert binary data to Buffer
 	const audioBase64 = extractBase64(audioData);
 	const audioBuffer = Buffer.from(audioBase64, 'base64');
 
@@ -128,39 +128,43 @@ export async function executeAudioTranscription(
 	};
 	const ext = extMap[mimeType] || 'mp3';
 
-	// Build multipart/form-data body
-	const fields: Record<string, string> = {};
-	if (model) fields.model = model;
-	if (options.language) fields.language = options.language;
-	if (options.prompt) fields.prompt = options.prompt;
-	if (options.temperature !== undefined) fields.temperature = options.temperature.toString();
-
-	const { body: multipartBody, contentType } = buildMultipartBody(
-		fields,
-		{ fieldName: 'file', buffer: audioBuffer, fileName: `audio.${ext}`, mimeType },
-	);
+	// Use native fetch with FormData for reliable multipart upload
+	const formData = new FormData();
+	formData.append('file', new Blob([audioBuffer], { type: mimeType }), `audio.${ext}`);
+	if (model) formData.append('model', model);
+	if (options.language) formData.append('language', options.language);
+	if (options.prompt) formData.append('prompt', options.prompt);
+	if (options.temperature !== undefined) formData.append('temperature', options.temperature.toString());
 
 	try {
-		const response = await this.helpers.httpRequest({
+		const fetchResponse = await fetch('https://gen.pollinations.ai/v1/audio/transcriptions', {
 			method: 'POST',
-			url: 'https://gen.pollinations.ai/v1/audio/transcriptions',
 			headers: {
 				Authorization: `Bearer ${credentials.apiKey}`,
-				'Content-Type': contentType,
 			},
-			body: multipartBody,
-			json: false,
+			body: formData,
 		});
 
-		// Parse response (json: false returns a string)
-		const parsed = typeof response === 'string' ? (() => { try { return JSON.parse(response); } catch { return { text: response }; } })() : response;
-		const transcription = parsed.text || (typeof response === 'string' ? response : '');
+		if (!fetchResponse.ok) {
+			const errorText = await fetchResponse.text();
+			throw new Error(`HTTP ${fetchResponse.status}: ${errorText}`);
+		}
+
+		const responseText = await fetchResponse.text();
+		let parsed: Record<string, unknown>;
+		try {
+			parsed = JSON.parse(responseText);
+		} catch {
+			parsed = { text: responseText };
+		}
+
+		const transcription = (parsed.text as string) || responseText;
 
 		return {
 			json: {
 				transcription,
 				model,
-				language: parsed.language || options.language || '',
+				language: (parsed.language as string) || options.language || '',
 				duration: parsed.duration || null,
 			},
 			pairedItem: { item: itemIndex },
