@@ -62,6 +62,20 @@ export const audioTranscriptionOperation: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Response Format',
+				name: 'response_format',
+				type: 'options',
+				options: [
+					{ name: 'JSON', value: 'json' },
+					{ name: 'SRT', value: 'srt' },
+					{ name: 'Text', value: 'text' },
+					{ name: 'Verbose JSON', value: 'verbose_json' },
+					{ name: 'VTT', value: 'vtt' },
+				],
+				default: 'json',
+				description: 'The format of the transcript output',
+			},
+			{
 				displayName: 'Temperature',
 				name: 'temperature',
 				type: 'number',
@@ -86,6 +100,7 @@ export async function executeAudioTranscription(
 	const options = this.getNodeParameter('transcriptionOptions', itemIndex, {}) as {
 		language?: string;
 		prompt?: string;
+		response_format?: string;
 		temperature?: number;
 	};
 
@@ -131,6 +146,7 @@ export async function executeAudioTranscription(
 	if (model) formData.append('model', model);
 	if (options.language) formData.append('language', options.language);
 	if (options.prompt) formData.append('prompt', options.prompt);
+	if (options.response_format) formData.append('response_format', options.response_format);
 	if (options.temperature !== undefined) formData.append('temperature', options.temperature.toString());
 
 	try {
@@ -148,6 +164,22 @@ export async function executeAudioTranscription(
 		}
 
 		const responseText = await fetchResponse.text();
+		const format = options.response_format || 'json';
+
+		// For text/srt/vtt formats, the response is plain text
+		if (format === 'text' || format === 'srt' || format === 'vtt') {
+			return {
+				json: {
+					transcription: responseText,
+					model,
+					format,
+					language: options.language || '',
+				},
+				pairedItem: { item: itemIndex },
+			};
+		}
+
+		// For json/verbose_json, parse the response
 		let parsed: Record<string, unknown>;
 		try {
 			parsed = JSON.parse(responseText);
@@ -161,8 +193,11 @@ export async function executeAudioTranscription(
 			json: {
 				transcription,
 				model,
+				format,
 				language: (parsed.language as string) || options.language || '',
 				duration: parsed.duration || null,
+				...(format === 'verbose_json' && parsed.segments ? { segments: parsed.segments } : {}),
+				...(format === 'verbose_json' && parsed.words ? { words: parsed.words } : {}),
 			},
 			pairedItem: { item: itemIndex },
 		};
