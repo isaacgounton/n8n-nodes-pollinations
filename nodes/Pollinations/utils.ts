@@ -22,3 +22,40 @@ export function extractBase64(data: string | Buffer): string {
 export function sanitizePromptForUrl(prompt: string): string {
 	return prompt.replace(/%/g, 'percent');
 }
+
+/**
+ * Build a multipart/form-data body manually from fields and a file buffer.
+ * Returns { body: Buffer, contentType: string } with the correct boundary.
+ *
+ * This is needed because Node.js global FormData + Blob doesn't serialize
+ * binary data correctly through n8n's httpRequest (axios-based).
+ */
+export function buildMultipartBody(
+	fields: Record<string, string>,
+	file: { fieldName: string; buffer: Buffer; fileName: string; mimeType: string },
+): { body: Buffer; contentType: string } {
+	const boundary = `----n8nBoundary${Date.now().toString(16)}`;
+	const parts: Buffer[] = [];
+
+	// Add string fields
+	for (const [key, value] of Object.entries(fields)) {
+		parts.push(Buffer.from(
+			`--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`,
+		));
+	}
+
+	// Add file field
+	parts.push(Buffer.from(
+		`--${boundary}\r\nContent-Disposition: form-data; name="${file.fieldName}"; filename="${file.fileName}"\r\nContent-Type: ${file.mimeType}\r\n\r\n`,
+	));
+	parts.push(file.buffer);
+	parts.push(Buffer.from('\r\n'));
+
+	// Closing boundary
+	parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+	return {
+		body: Buffer.concat(parts),
+		contentType: `multipart/form-data; boundary=${boundary}`,
+	};
+}

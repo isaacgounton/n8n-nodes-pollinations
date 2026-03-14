@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { extractBase64 } from '../utils';
+import { extractBase64, buildMultipartBody } from '../utils';
 
 export const mediaUploadOperation: INodeProperties[] = [
 	{
@@ -90,16 +90,19 @@ export async function executeMediaUpload(
 	const fileName = binaryData.fileName || 'file';
 
 	try {
-		const formData = new FormData();
-		formData.append('file', new Blob([fileBuffer], { type: mimeType }), fileName);
+		const { body: multipartBody, contentType } = buildMultipartBody(
+			{},
+			{ fieldName: 'file', buffer: fileBuffer, fileName, mimeType },
+		);
 
 		const response = await this.helpers.httpRequest({
 			method: 'POST',
 			url: 'https://media.pollinations.ai/upload',
 			headers: {
 				Authorization: `Bearer ${credentials.apiKey}`,
+				'Content-Type': contentType,
 			},
-			body: formData,
+			body: multipartBody,
 		});
 
 		return {

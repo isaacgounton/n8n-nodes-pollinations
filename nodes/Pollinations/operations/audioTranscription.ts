@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { extractBase64 } from '../utils';
+import { extractBase64, buildMultipartBody } from '../utils';
 
 export const audioTranscriptionOperation: INodeProperties[] = [
 	{
@@ -129,12 +129,16 @@ export async function executeAudioTranscription(
 	const ext = extMap[mimeType] || 'mp3';
 
 	// Build multipart/form-data body
-	const formData = new FormData();
-	formData.append('file', new Blob([audioBuffer], { type: mimeType }), `audio.${ext}`);
-	if (model) formData.append('model', model);
-	if (options.language) formData.append('language', options.language);
-	if (options.prompt) formData.append('prompt', options.prompt);
-	if (options.temperature !== undefined) formData.append('temperature', options.temperature.toString());
+	const fields: Record<string, string> = {};
+	if (model) fields.model = model;
+	if (options.language) fields.language = options.language;
+	if (options.prompt) fields.prompt = options.prompt;
+	if (options.temperature !== undefined) fields.temperature = options.temperature.toString();
+
+	const { body: multipartBody, contentType } = buildMultipartBody(
+		fields,
+		{ fieldName: 'file', buffer: audioBuffer, fileName: `audio.${ext}`, mimeType },
+	);
 
 	try {
 		const response = await this.helpers.httpRequest({
@@ -142,8 +146,9 @@ export async function executeAudioTranscription(
 			url: 'https://gen.pollinations.ai/v1/audio/transcriptions',
 			headers: {
 				Authorization: `Bearer ${credentials.apiKey}`,
+				'Content-Type': contentType,
 			},
-			body: formData,
+			body: multipartBody,
 		});
 
 		const transcription = typeof response === 'string' ? response : (response.text || '');
