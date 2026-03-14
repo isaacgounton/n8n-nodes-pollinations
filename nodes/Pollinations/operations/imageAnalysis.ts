@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { extractBase64 } from '../utils';
+
 
 export const imageAnalysisOperation: INodeProperties[] = [
 	{
@@ -77,8 +77,9 @@ export async function executeImageAnalysis(
 		'Content-Type': 'application/json',
 	};
 
-	// Convert binary data to base64
-	const imageBase64 = extractBase64(binaryData.data);
+	// Use getBinaryDataBuffer for proper binary access in n8n 2.x
+	const imageBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryProperty);
+	const imageBase64 = imageBuffer.toString('base64');
 
 	const mimeType = binaryData.mimeType || 'image/jpeg';
 

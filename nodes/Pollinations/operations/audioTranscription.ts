@@ -1,6 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { extractBase64 } from '../utils';
 
 export const audioTranscriptionOperation: INodeProperties[] = [
 	{
@@ -102,15 +101,13 @@ export async function executeAudioTranscription(
 		);
 	}
 
-	const audioData = binaryData.data;
 	const mimeType = binaryData.mimeType || 'audio/mpeg';
 
 	// Get credentials
 	const credentials = await this.getCredentials('pollinationsApi');
 
-	// Convert binary data to Buffer
-	const audioBase64 = extractBase64(audioData);
-	const audioBuffer = Buffer.from(audioBase64, 'base64');
+	// Use getBinaryDataBuffer for proper binary access in n8n 2.x
+	const audioBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 
 	// Determine file extension from mimeType
 	const extMap: Record<string, string> = {
@@ -130,7 +127,7 @@ export async function executeAudioTranscription(
 
 	// Use native fetch with FormData for reliable multipart upload
 	const formData = new FormData();
-	formData.append('file', new Blob([audioBuffer], { type: mimeType }), `audio.${ext}`);
+	formData.append('file', new Blob([new Uint8Array(audioBuffer)], { type: mimeType }), `audio.${ext}`);
 	if (model) formData.append('model', model);
 	if (options.language) formData.append('language', options.language);
 	if (options.prompt) formData.append('prompt', options.prompt);

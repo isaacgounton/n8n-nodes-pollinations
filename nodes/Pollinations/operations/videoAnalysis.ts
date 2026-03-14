@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { extractBase64 } from '../utils';
+
 
 export const videoAnalysisOperation: INodeProperties[] = [
 	{
@@ -141,8 +141,9 @@ export async function executeVideoAnalysis(
 			);
 		}
 
-		// Convert binary data to base64
-		const videoBase64 = extractBase64(binaryData.data);
+		// Use getBinaryDataBuffer for proper binary access in n8n 2.x
+		const videoBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryProperty);
+		const videoBase64 = videoBuffer.toString('base64');
 
 		const mimeType = binaryData.mimeType || 'video/mp4';
 

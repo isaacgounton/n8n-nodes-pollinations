@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { extractBase64 } from '../utils';
+
 
 export const mediaUploadOperation: INodeProperties[] = [
 	{
@@ -84,8 +84,8 @@ export async function executeMediaUpload(
 
 	const credentials = await this.getCredentials('pollinationsApi');
 
-	const fileBase64 = extractBase64(binaryData.data);
-	const fileBuffer = Buffer.from(fileBase64, 'base64');
+	// Use getBinaryDataBuffer for proper binary access in n8n 2.x
+	const fileBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 	const mimeType = binaryData.mimeType || 'application/octet-stream';
 	const fileName = binaryData.fileName || 'file';
 
@@ -98,7 +98,7 @@ export async function executeMediaUpload(
 				'Content-Type': mimeType,
 				'X-File-Name': fileName,
 			},
-			body: fileBuffer,
+			body: new Uint8Array(fileBuffer),
 		});
 
 		if (!fetchResponse.ok) {
