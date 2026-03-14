@@ -358,14 +358,24 @@ export class Pollinations implements INodeType {
 						url: 'https://gen.pollinations.ai/audio/models',
 					})) as Array<{ name: string; aliases?: string[]; input_modalities?: string[]; output_modalities?: string[] }>;
 
-					// STT models: input audio, output text
-					return models
-						.filter((m) => m.input_modalities?.includes('audio') && m.output_modalities?.includes('text'))
-						.map((m) => ({
+					// STT models: input audio, output text — include aliases as separate options
+					const options: INodePropertyOptions[] = [];
+					for (const m of models) {
+						if (!m.input_modalities?.includes('audio') || !m.output_modalities?.includes('text')) continue;
+						options.push({
 							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
 							value: m.name,
-						}))
-						.sort((a, b) => a.name.localeCompare(b.name));
+						});
+						if (m.aliases) {
+							for (const alias of m.aliases) {
+								options.push({
+									name: alias.charAt(0).toUpperCase() + alias.slice(1).replace(/[-_]/g, ' '),
+									value: alias,
+								});
+							}
+						}
+					}
+					return options.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
 					return [];
 				}
@@ -404,18 +414,27 @@ export class Pollinations implements INodeType {
 						url: 'https://gen.pollinations.ai/audio/models',
 					})) as Array<{ name: string; aliases?: string[]; description?: string; input_modalities?: string[]; output_modalities?: string[]; voices?: string[] }>;
 
-					// TTS models: input text, output audio, exclude music models (identified by "music" in aliases)
-					return models
-						.filter((m) => {
-							if (!m.input_modalities?.includes('text') || !m.output_modalities?.includes('audio')) return false;
-							const isMusic = m.aliases?.some((a) => a.toLowerCase().includes('music')) || false;
-							return !isMusic;
-						})
-						.map((m) => ({
+					// TTS models: input text, output audio, exclude music models — include aliases
+					const options: INodePropertyOptions[] = [];
+					for (const m of models) {
+						if (!m.input_modalities?.includes('text') || !m.output_modalities?.includes('audio')) continue;
+						const isMusic = m.aliases?.some((a) => a.toLowerCase().includes('music')) || false;
+						if (isMusic) continue;
+						options.push({
 							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
 							value: m.name,
-						}))
-						.sort((a, b) => a.name.localeCompare(b.name));
+						});
+						if (m.aliases) {
+							for (const alias of m.aliases) {
+								if (alias.toLowerCase().includes('music')) continue;
+								options.push({
+									name: alias.charAt(0).toUpperCase() + alias.slice(1).replace(/[-_]/g, ' '),
+									value: alias,
+								});
+							}
+						}
+					}
+					return options.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
 					return [];
 				}
@@ -427,17 +446,26 @@ export class Pollinations implements INodeType {
 						url: 'https://gen.pollinations.ai/audio/models',
 					})) as Array<{ name: string; aliases?: string[]; input_modalities?: string[]; output_modalities?: string[]; voices?: string[] }>;
 
-					// Music models: input text, output audio, have "music" in aliases
-					return models
-						.filter((m) => {
-							if (!m.input_modalities?.includes('text') || !m.output_modalities?.includes('audio')) return false;
-							return m.aliases?.some((a) => a.toLowerCase().includes('music')) || false;
-						})
-						.map((m) => ({
+					// Music models: input text, output audio, have "music" in aliases — include aliases
+					const musicOptions: INodePropertyOptions[] = [];
+					for (const m of models) {
+						if (!m.input_modalities?.includes('text') || !m.output_modalities?.includes('audio')) continue;
+						const isMusic = m.aliases?.some((a) => a.toLowerCase().includes('music')) || false;
+						if (!isMusic) continue;
+						musicOptions.push({
 							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
 							value: m.name,
-						}))
-						.sort((a, b) => a.name.localeCompare(b.name));
+						});
+						if (m.aliases) {
+							for (const alias of m.aliases) {
+								musicOptions.push({
+									name: alias.charAt(0).toUpperCase() + alias.slice(1).replace(/[-_]/g, ' '),
+									value: alias,
+								});
+							}
+						}
+					}
+					return musicOptions.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
 					return [];
 				}
