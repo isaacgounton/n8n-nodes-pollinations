@@ -2,31 +2,64 @@ name: Publish to npm
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'package.json'
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 2
+
+      - name: Check if version changed
+        id: version
+        run: |
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          OLD_VERSION=$(git show HEAD~1:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version" 2>/dev/null || echo "")
+          echo "new=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "old=$OLD_VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node.js
+        if: steps.version.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
-      
+
       - name: Install dependencies
+        if: steps.version.outputs.changed == 'true'
         run: npm ci
-      
+
+      - name: Run tests
+        if: steps.version.outputs.changed == 'true'
+        run: npm test
+
       - name: Build
+        if: steps.version.outputs.changed == 'true'
         run: npm run build
-      
+
       - name: Publish to npm
+        if: steps.version.outputs.changed == 'true'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create git tag
+        if: steps.version.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.new }}
+        run: |
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
