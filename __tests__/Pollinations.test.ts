@@ -72,6 +72,7 @@ describe('Pollinations Node', () => {
 			'getTranscriptionModels',
 			'getAudioModels',
 			'getMusicModels',
+			'getVoices',
 		]));
 	});
 

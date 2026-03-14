@@ -427,22 +427,7 @@ export class PollinationsChatModel implements INodeType {
 					if (models.length > 0) return models;
 					throw new ApplicationError('Empty model list');
 				} catch {
-					// Fallback models when API is unreachable
-					return [
-						{ name: 'Claude', value: 'claude' },
-						{ name: 'Claude Fast', value: 'claude-fast' },
-						{ name: 'DeepSeek', value: 'deepseek' },
-						{ name: 'Gemini', value: 'gemini' },
-						{ name: 'Gemini Large', value: 'gemini-large' },
-						{ name: 'Gemini Search', value: 'gemini-search' },
-						{ name: 'Grok', value: 'grok' },
-						{ name: 'Mistral', value: 'mistral' },
-						{ name: 'OpenAI', value: 'openai' },
-						{ name: 'OpenAI Large', value: 'openai-large' },
-						{ name: 'Perplexity Fast', value: 'perplexity-fast' },
-						{ name: 'Perplexity Reasoning', value: 'perplexity-reasoning' },
-						{ name: 'Qwen Coder', value: 'qwen-coder' },
-					];
+					return [];
 				}
 			},
 		},

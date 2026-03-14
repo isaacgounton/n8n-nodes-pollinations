@@ -367,10 +367,34 @@ export class Pollinations implements INodeType {
 						}))
 						.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
-					return [
-						{ name: 'Scribe', value: 'scribe' },
-						{ name: 'Whisper', value: 'whisper' },
-					];
+					return [];
+				}
+			},
+			async getVoices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const models = (await this.helpers.httpRequest({
+						method: 'GET',
+						url: 'https://gen.pollinations.ai/audio/models',
+					})) as Array<{ name: string; voices?: string[] }>;
+
+					// Collect all unique voices from all models that have them
+					const voiceSet = new Set<string>();
+					for (const m of models) {
+						if (m.voices) {
+							for (const v of m.voices) {
+								voiceSet.add(v);
+							}
+						}
+					}
+
+					return Array.from(voiceSet)
+						.map((v) => ({
+							name: v.charAt(0).toUpperCase() + v.slice(1),
+							value: v,
+						}))
+						.sort((a, b) => a.name.localeCompare(b.name));
+				} catch {
+					return [];
 				}
 			},
 			async getAudioModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -378,21 +402,22 @@ export class Pollinations implements INodeType {
 					const models = (await this.helpers.httpRequest({
 						method: 'GET',
 						url: 'https://gen.pollinations.ai/audio/models',
-					})) as Array<{ name: string; aliases?: string[]; input_modalities?: string[]; output_modalities?: string[]; voices?: string[] }>;
+					})) as Array<{ name: string; aliases?: string[]; description?: string; input_modalities?: string[]; output_modalities?: string[]; voices?: string[] }>;
 
-					// TTS models: input text, output audio, and have voices
+					// TTS models: input text, output audio, exclude music models (identified by "music" in aliases)
 					return models
-						.filter((m) => m.input_modalities?.includes('text') && m.output_modalities?.includes('audio') && m.voices && m.voices.length > 0)
+						.filter((m) => {
+							if (!m.input_modalities?.includes('text') || !m.output_modalities?.includes('audio')) return false;
+							const isMusic = m.aliases?.some((a) => a.toLowerCase().includes('music')) || false;
+							return !isMusic;
+						})
 						.map((m) => ({
 							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
 							value: m.name,
 						}))
 						.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
-					return [
-						{ name: 'Elevenlabs', value: 'elevenlabs' },
-						{ name: 'Qwen3 Tts', value: 'qwen3-tts' },
-					];
+					return [];
 				}
 			},
 			async getMusicModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -402,19 +427,19 @@ export class Pollinations implements INodeType {
 						url: 'https://gen.pollinations.ai/audio/models',
 					})) as Array<{ name: string; aliases?: string[]; input_modalities?: string[]; output_modalities?: string[]; voices?: string[] }>;
 
-					// Music models: input text, output audio, no voices (not TTS)
+					// Music models: input text, output audio, have "music" in aliases
 					return models
-						.filter((m) => m.input_modalities?.includes('text') && m.output_modalities?.includes('audio') && (!m.voices || m.voices.length === 0))
+						.filter((m) => {
+							if (!m.input_modalities?.includes('text') || !m.output_modalities?.includes('audio')) return false;
+							return m.aliases?.some((a) => a.toLowerCase().includes('music')) || false;
+						})
 						.map((m) => ({
 							name: m.name.charAt(0).toUpperCase() + m.name.slice(1).replace(/-/g, ' '),
 							value: m.name,
 						}))
 						.sort((a, b) => a.name.localeCompare(b.name));
 				} catch {
-					return [
-						{ name: 'Elevenmusic', value: 'elevenmusic' },
-						{ name: 'Suno', value: 'suno' },
-					];
+					return [];
 				}
 			},
 		},
